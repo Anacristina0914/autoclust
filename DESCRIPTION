@@ -1,0 +1,44 @@
+Package: autoclust
+Title: Clustering using autoantibodies and association to clinical variables.
+Version: 0.0.0.9000
+Authors@R: 
+    person("Ana Cristina", "Gonzalez", , "ana.cristina.gonzalez.sanchez@ki.se", role = c("aut", "cre"),
+           comment = c(ORCID = ""))
+Description: Cluster samples and visualize. Carry out association against clinical variables.
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+    anocva,
+    caret,
+    cluster,
+    dplyr,
+    factoextra,
+    GGally,
+    ggcorrplot,
+    ggplot2,
+    ggpubr,
+    ggridges,
+    heatmaply,
+    ISLR,
+    knitr,
+    lavaan,
+    lubridate,
+    magrittr,
+    mediation,
+    naniar,
+    pheatmap,
+    plotly,
+    qqman,
+    readxl,
+    reshape2,
+    Rtsne,
+    scatterplot3d,
+    survival,
+    umap,
+    viridis
+Suggests: 
+    rmarkdown
+VignetteBuilder: knitr
