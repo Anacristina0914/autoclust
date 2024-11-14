@@ -8,28 +8,48 @@ compute_dissimilarity_matrix(
   x,
   metric = c("euclidean", "manhattan", "gower"),
   stand = FALSE,
-  plot_dissim = TRUE
+  return_dis = FALSE,
+  plot_dissim = TRUE,
+  heatmap_title = paste0(metric, " Dissimilarity Matrix"),
+  heatmap_axis_text_size = 4,
+  plot_title_size = 20,
+  save_plots = FALSE,
+  plot_outpath = "."
 )
 }
 \arguments{
-\item{x}{numeric matrix or dataframe n x p. Dissimilarities are computed between the rows of x. Dataframe must contain headers. For further details see help(daisy).}
+\item{x}{numeric matrix or data frame (n x p). Dissimilarities are computed between the rows of x. Dataframe must contain headers.
+For further details, see help(daisy).}
 
-\item{metric}{Metric to be used to compute matrix. Possible options include gower(default), euclidean or manhattan.}
+\item{metric}{Metric to be used to compute matrix. Possible options include "gower" (default), "euclidean", or "manhattan".}
 
-\item{stand}{if TRUE, measurements in x are standarized before calculating dissimilarities. For further details see help(daisy).}
+\item{stand}{if TRUE, measurements in x are standardized before calculating dissimilarities. For further details, see help(daisy).}
 
-\item{plot_dissim}{Plots the dissimilarity matrix as a heatmap and shows hirarchical clustering on plot.}
+\item{return_dis}{if TRUE function returns dissimilarity object rather than matrix.}
 
-\item{row_names}{if TRUE, df/matrix contains row names and will be removed by function.}
+\item{plot_dissim}{if TRUE, plots the dissimilarity matrix as a heatmap and shows hierarchical clustering on the plot.}
+
+\item{heatmap_title}{Title for the heatmap plot.}
+
+\item{heatmap_axis_text_size}{Heatmap x-y axis text size.}
+
+\item{plot_title_size}{Font size for the plot title.}
+
+\item{save_plots}{If TRUE plots produced are saved in the working directory.}
+
+\item{plot_outpath}{Output pathway for plots. If not specified and save_plots is TRUE they are saved in the current directory.}
 }
 \value{
-Description of what the function returns
+A list containing the dissimilarity matrix, optionally the heatmap plot if specified.
 }
 \description{
-Wrapper function (daisy) for to compute dissimilarity matrices from matrix or datasets of continous, discrete or categorical variables.
+Wrapper function (daisy) for computing dissimilarity matrices from matrix or datasets of continuous, discrete, or categorical variables.
+The function also creates a heatmap using the dissimilarity matrix if specified.
 }
 \examples{
 # Example of how to use the function
-compute_dissimilarity_matrix(x = autoant_dataset, metric = "gower")
+result <- compute_dissimilarity_matrix(x = autoant_dataset, metric = "gower")
+result$dissimilarity_matrix  # Access the matrix
+result$heatmap_plot  # Access the plot (if plot_dissim = TRUE)
 
 }
