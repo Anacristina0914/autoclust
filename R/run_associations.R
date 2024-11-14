@@ -11,6 +11,12 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
 
   # Check that response outcome variable exists in dataset
   if (!all(clinical_manifestations %in% colnames(clinical_data_df))){
+    missing_manifest <- clinical_manifestations[!clinical_manifestations %in% colnames(clinical_data_df)]
+    stop(sprintf("Clinical manifestation: %s not found in the dataframe.\n", missing_manifest))
+  }
+
+  # Check that the outcome variable is present in the dataframe
+  if (!outcome_var_colname %in% colnames(clinical_data_df)){
     stop(sprintf("A column with outcome variable  %s was not found on dataframe", outcome_var_colname))
   }
 
@@ -72,8 +78,8 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
     # Take only top results specified by user
     top_results <- results_df[0:ntop, ] %>%
       arrange(-OR)
-
-    forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(predictor, clinical_manifestation, `outcome_var_colname`, `groups`, sep = " - "), OR))) +
+#`outcome_var_colname`, `groups`
+    forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(predictor, clinical_manifestation, subgroup, sep = " - "), OR))) +
       geom_errorbarh(aes(xmin = `2.5 %`, xmax = `97.5 %`), height = 0.2, color = "black") +  # Confidence intervals
       geom_point(aes(color = OR > 1), size = 2) +                                       # OR points, colored by OR > 1
       scale_color_manual(values = c("TRUE" = "#870052", "FALSE" = "#4DB5BC")) +               # Customize colors
@@ -85,7 +91,7 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
       ) +
 
       # Display p-value without scientific notation
-      geom_text(aes(label = sprintf("p = %.4f", `Pr>|z|`)), hjust = -0.1, vjust = -0.7, color = "gray40", size = 2) +
+      geom_text(aes(label = sprintf("p = %.4f", `Pr>|z|`)), hjust = -0.1, vjust = -0.7, color = "gray40", size = 3) +
 
       # Add minimal theme with border and grid lines
       theme_minimal() +
