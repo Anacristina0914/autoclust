@@ -35,6 +35,7 @@ Imports:
     randomcoloR,
     readxl,
     reshape2,
+    rstanarm,
     Rtsne,
     scatterplot3d,
     survival,

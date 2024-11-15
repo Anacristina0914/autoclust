@@ -1,6 +1,6 @@
 run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_colname = "subgroup",
-                             adjust_by =c("Age_dx + male.female_dx"), plot = FALSE, ntop = 10,
-                             order = FALSE, adjust_p = FALSE){
+                             adjust_by =c("Age_dx + male.female_dx"), plot = FALSE, y.axis.text.size = 12,
+                             pval.label.size = 3, ntop = 10, order = FALSE, adjust_p = FALSE){
 
   # Retrieve clinical manifestation names
   if (class(clinical_data_cols) == "numeric"){
@@ -8,6 +8,18 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
   } else {
     clinical_manifestations = as.character(clinical_data_cols)
   }
+
+  # Which columns should be factors?
+  factor_cols = c(clinical_manifestations, outcome_var_colname)
+
+  # Check that all columns involved as treated as factor
+  clinical_data_df[factor_cols] <- lapply(clinical_data_df[factor_cols], function(column) {
+    if (!is.factor(column)) {
+      return(as.factor(column))  # Convert to factor if not already a factor
+    } else {
+      return(column)  # Leave as is if already a factor
+    }
+  })
 
   # Check that response outcome variable exists in dataset
   if (!all(clinical_manifestations %in% colnames(clinical_data_df))){
@@ -78,11 +90,26 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
     # Take only top results specified by user
     top_results <- results_df[0:ntop, ] %>%
       arrange(-OR)
-#`outcome_var_colname`, `groups`
-    forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(predictor, clinical_manifestation, subgroup, sep = " - "), OR))) +
+    #`outcome_var_colname`, `groups`
+
+    # Categorize results
+    top_results$category <- with(top_results, ifelse(`Pr>|z|` < 0.05 & OR > 1, "Significant (OR > 1)",
+                                                     ifelse(`Pr>|z|` > 0.05 & OR < 1, "Not Significant (OR < 1)",
+                                                            ifelse(`Pr>|z|` < 0.05 & OR < 1, "p-value Significant (OR < 1)",
+                                                                   "OR Significant (p-value > 0.05)"))))
+
+    forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(predictor, clinical_manifestation, .data[[outcome_var_colname]], sep = " - "), OR))) +
       geom_errorbarh(aes(xmin = `2.5 %`, xmax = `97.5 %`), height = 0.2, color = "black") +  # Confidence intervals
-      geom_point(aes(color = OR > 1), size = 2) +                                       # OR points, colored by OR > 1
-      scale_color_manual(values = c("TRUE" = "#870052", "FALSE" = "#4DB5BC")) +               # Customize colors
+      geom_point(aes(color = category), size = 2) +                                       # OR points, colored by OR > 1
+      scale_color_manual(
+        values = c(
+          "Significant (OR > 1)" = "#870052",
+          "Not Significant (OR < 1)" = "#4DB5BC",
+          "p-value Significant (OR < 1)" = "#FF8C00",
+          "OR Significant (p-value > 0.05)" = "#4682B4"
+        ),
+        name = "Category"
+      ) +               # Customize colors
       labs(
         x = "Odds Ratio (OR)",
         y = "Variables",
@@ -91,7 +118,7 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
       ) +
 
       # Display p-value without scientific notation
-      geom_text(aes(label = sprintf("p = %.4f", `Pr>|z|`)), hjust = -0.1, vjust = -0.7, color = "gray40", size = 3) +
+      geom_text(aes(label = sprintf("p = %.4f", `Pr>|z|`)), hjust = -0.1, vjust = -0.7, color = "gray40", size = pval.label.size) +
 
       # Add minimal theme with border and grid lines
       theme_minimal() +
@@ -99,13 +126,16 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
         panel.border = element_rect(color = "black", fill = NA, size = 0.5),   # Adds a border around the plot area
         panel.grid.major.x = element_line(color = "gray80", linetype = "dashed"),  # Dashed vertical grid lines
         panel.grid.major.y = element_blank(),                                     # Remove horizontal grid lines for clarity
-        legend.position = "none",
+        legend.position = "right",
+        legend.text = element_text(size = y.axis.text.size-2),
+        legend.title = element_text(size = y.axis.text.size),
         plot.title = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5)
+        plot.caption = element_text(hjust = 0.5),
+        axis.text.y = element_text(size = y.axis.text.size)
       ) +
 
       # Adjust x-axis limits for padding around CI range
-      coord_cartesian(xlim = c(min(top_results$`2.5 %`) - 0.5, max(top_results$`97.5 %`) + 0.5))
+      coord_cartesian(xlim = c(min(top_results$`2.5 %`) - 2, max(top_results$`97.5 %`) + 1))
 
     results_list$forest_plot <- forest
   }
