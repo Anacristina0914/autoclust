@@ -40,7 +40,9 @@ Imports:
     scatterplot3d,
     survival,
     umap,
-    viridis
+    viridis,
+    purrr,
+    rlang
 Suggests: 
     rmarkdown
 VignetteBuilder: knitr
