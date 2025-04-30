@@ -5,7 +5,7 @@ run_associations_bayesian <- function(clinical_data_df, clinical_data_cols, outc
                              iter = 2000, warmup = 1000, thin = 1, seed = 123){
 
   # Retrieve clinical manifestation names
-  if (class(clinical_data_cols) == "numeric"){
+  if (is(clinical_data_cols, "numeric")){
     clinical_manifestations = colnames(clinical_data)[c(14, 27, 28, 31:36, 38:40, 48:55, 57, 59:63, 66:67, 70:72, 92)] # Select the names of the columns that contain clinical manifestations.
   } else {
     clinical_manifestations = as.character(clinical_data_cols)
