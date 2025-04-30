@@ -1,10 +1,10 @@
 run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_colname = "subgroup",
                              adjust_by ="Age_dx + male.female_dx", family = binomial, link = "logit", plot = FALSE, y.axis.text.size = 12,
-                             or.label.size = 3, ntop = 10, order = FALSE, adjust_p = FALSE, add_xylabs = FALSE, name_mapping = NULL,
-                             xlim_min = -2.5, xlim_max = 2.5){
+                             or.label.size = 3, ntop = 10, order = FALSE, adjust_p = TRUE, p_adj_method = "BH", add_xylabs = FALSE, name_mapping = NULL,
+                             x.axis.text.size = 8, pt.size = 2, filter_sig_OR = TRUE, forest_plot_title = "Associations"){
 
   # Retrieve clinical manifestation names
-  if (class(clinical_data_cols) == "numeric"){
+  if (is(clinical_data_cols, "numeric")){
     clinical_manifestations = colnames(clinical_data)[clinical_data_cols] # Select the names of the columns that contain clinical manifestations.
   } else {
     clinical_manifestations = as.character(clinical_data_cols)
@@ -13,6 +13,16 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
   #print(c(clinical_manifestations, outcome_var_colname))
   # Which columns should be factors?
   factor_cols = c(clinical_manifestations, outcome_var_colname)
+
+  # Check which columns exist
+  adjustment_vars <- unlist(strsplit(adjust_by, "\\+")) # Split by "+"
+  adjustment_vars <- trimws(adjustment_vars) # Remove extra spaces
+  required_vars <- unique(c(clinical_manifestations, outcome_var_colname, adjustment_vars))
+  missing_required <- setdiff(required_vars, colnames(clinical_data_df))
+  if (length(missing_required) > 0){
+    stop(sprintf("The following required variables are missing from the dataframe: %s", paste(missing_required, collapse = ", ")))
+  }
+
 
   # Check that all columns involved as treated as factor (only for log regression)
   if (identical(family, binomial)){
@@ -54,7 +64,7 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
       # Create formula dynamically
       try({
         message(sprintf("Computing %s for %s", group, clin_manifest))
-        formula <- as.formula(sprintf("%s ~ %s%s + %s",
+        formula <- as.formula(sprintf("`%s` ~ %s%s + %s",
                                       clin_manifest,
                                       outcome_var_colname,
                                       group,
@@ -84,7 +94,7 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
         # Bind results to the main results data frame
         results_df <- bind_rows(results_df, or_ci_df)
 
-      }, silent = TRUE)
+      }, silent = FALSE)
     }
   }
   # If order, arrange by pvalue
@@ -93,19 +103,34 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
       arrange(`Pr>|z|`)
   }
 
+  if (adjust_p) {
+    if (!"Pr>|z|" %in% colnames(results_df)) {
+      stop("Column 'Pr>|z|' not found in results_df; cannot adjust p-values.")
+    }
+    #results_df$`Pr>|z|` <- p.adjust(results_df$`Pr>|z|`, method = p_adj_method)
+    results_df$adj_p <- p.adjust(results_df$`Pr>|z|`, method = p_adj_method)
+    results_df$adj_p_method <- p_adj_method
+  }
+
+
   # Add results to list
   results_list <- list(models = model_ominibus_list,
                        anova = anova_list,
-                       summarized_results = results_df)
+                       summarized_results = results_df,
+                       df = clinical_data_df)
+
 
   if (plot){
     message("Making forest plot...")
     forest <- make_forest_plot(results_df = results_df, ntop = ntop, clinical_manifestation = clinical_manifestation,
-                     outcome_var_colname = outcome_var_colname, pt.size = 2, y.axis.text.size = y.axis.text.size,
-                     x.axis.text.size = x.axis.text.size, name_mapping = name_mapping,
-                     add_xylabs = add_xylabs, or.label.size = or.label.size, xlim_min = xlim_min, xlim_max = xlim_max, plot_title = "Clinical Associations")
+                     outcome_var_colname = outcome_var_colname, pt.size = pt.size, y.axis.text.size = y.axis.text.size,
+                     x.axis.text.size = x.axis.text.size, name_mapping = name_mapping, adjust_vars = adjustment_vars,
+                     add_xylabs = add_xylabs, or.label.size = or.label.size, plot_title = forest_plot_title,
+                     filter_sig_OR = filter_sig_OR, adjust_p = adjust_p, p_adj_method = p_adj_method)
     results_list$forest_plot <- forest
   }
+
   message("DONE!")
   return(results_list)
 }
+
