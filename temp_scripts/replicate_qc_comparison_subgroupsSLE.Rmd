@@ -1,0 +1,1284 @@
+---
+title: "Replicate_Results_SLESubgroups"
+author: "Ana Cristina Gonzalez"
+date: "2024-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DEqMS)
+library(dplyr)
+library(readxl)
+library(matrixStats)
+library(ggrepel)
+library(tidyr)
+library(PCAtools)
+library(SummarizedExperiment)
+library(reshape2)
+library(randomcoloR)
+library(ggdist)
+library(devtools)
+library(stringr)
+library(dplyr)
+library(limma)
+library(svglite)
+library(circlize)
+library(ggsignif)
+library(ComplexHeatmap)
+library(RColorBrewer)
+library(pheatmap)
+devtools::load_all("/home/anagon@ad.cmm.se/Documents/packages/autoclust/") # Load all functions when they change
+# Ig vaiables. IgV remove.
+```
+
+## Read data
+
+Define directory where data is.
+
+```{r dirs}
+final_data_dir = "/run/user/1309843199/gvfs/smb-share:server=storage.ad.cmm.se,share=tank/users/anagon/Projects/SLE-subgroups/MS proteomic data Merck/Download 2024 02 22/Final Source Files/"
+quant_data = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "Quant. Data")
+gene_metadata = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "gene_metadata")
+sample_metadata = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "sample_metadata")
+
+#output_results_path = "/run/user/1309843199/gvfs/smb-share:server=storage.ad.cmm.se,share=tank/users/anagon/Projects/SLE-subgroups/MS proteomic data Merck/Re-analysis_ACGS"
+output_results_path <- "/home/anagon@ad.cmm.se/Documents/conferece_posters/Toronto_SLE25/poster_images/"
+```
+
+Filter quantitative data to not include only SLE (which includes controls) and the internal standards. Then plot the values of TMT per group.
+```{r select_sle}
+# Retrieve metadata and identifiers for SLE patients in cluster
+sle_ids = sample_metadata %>% 
+  filter(skujdom == "SLE" &
+           #cluster != "ctrl" &
+           cluster != "is")
+# How many samples per cluster
+table(sle_ids$cluster)
+
+# Find out which columns correspond to sle clusters
+samples_sle_colnum = which(colnames(quant_data) %in% sle_ids$Colname)
+
+# Keep only rows containing genes different than IGVs (IGHV*, IGKV*, IGLV*)
+keep_proteins <- gene_metadata %>% 
+  filter(!str_detect(`Gene Name`, "IG[HLK]V")) %>%
+  select(`Protein ID`)
+
+# 84 variable genes in the database
+keep_rows <- which(quant_data$`Protein ID` %in% keep_proteins$`Protein ID`)
+
+# Keep only non-variable chain rows and columns in sle_samples
+quant_data_sle = quant_data[keep_rows, c(samples_sle_colnum)]
+t_quant_data_sle = as.data.frame(t(quant_data_sle))
+colnames(t_quant_data_sle) = quant_data$`Protein ID`[keep_rows] # Name columns with only the proteins we kept
+
+# Make sure that proteins in the matrix are the same ones as the ones we inteded to select
+table(colnames(t_quant_data_sle) %in% keep_proteins$`Protein ID`)
+
+# Check that none of the variable chain proteins are present in the final dataframe
+table(colnames(t_quant_data_sle) %in% c(gene_metadata %>% 
+     filter(str_detect(`Gene Name`, "IG[HLK]V")) %>%
+     select(`Protein ID`)))
+
+# Which proteins are present in the final dataset
+proteins_in_exp_df <- gene_metadata %>% filter(`Protein ID` %in% colnames(t_quant_data_sle))
+
+# How many samples (rows) and how many proteins (columns) do we have?
+dim(t_quant_data_sle)
+```
+
+Make Single Cell Experiment object containing metadata and intensities.
+```{r}
+# Gene metadata with only selected proteins
+filt_nonvariable_gene_metadata <- gene_metadata %>% 
+     filter(!str_detect(`Gene Name`, "IG[HLK]V"))
+
+# Make sure these are the same as the ones present in the exp metadata
+table(filt_nonvariable_gene_metadata$`Protein ID` %in% proteins_in_exp_df$`Protein ID`)
+
+rownames(filt_nonvariable_gene_metadata) = filt_nonvariable_gene_metadata$`Protein ID`#colnames(t_quant_data_sle)
+rownames(sle_ids) = sle_ids$Colname
+
+se_object_MS <- SummarizedExperiment(
+  assays = list(TMT_ratios = t_quant_data_sle),
+  rowData = sle_ids,
+  colData = filt_nonvariable_gene_metadata
+)
+
+# Save se_object as an RDS
+#saveRDS(object = se_object_MS, file = file.path("/home/anagon@ad.cmm.se/Documents/projects/SLE_metabolomics/data", "SummarizedExperiment_LupusMS_SLECTRL_filtvariablechain.RDS"))
+```
+
+Reshape data
+```{r reshape}
+# Log2 transform the intensity data
+log2_tmt_data <- assay(se_object_MS, "TMT_ratios")
+
+# Add channel metadata and convert to long format
+sle_ids$Sample <- rownames(sle_ids)
+
+# Filter data for which all rows are 0's
+#t_quant_data_sle %>% select(where(~!all(is.na(.))))
+
+# From data, remove protein if missing values > 80%
+th_missing_filtering <- 80
+
+missing_prot_filter <- missing_by_protein %>% 
+  filter(percentage_samples_missing > th_missing_filtering) %>%
+  pull(`Protein ID`)
+
+filt_t_quant_data_sle <- t_quant_data_sle %>% 
+  select(!all_of(missing_prot_filter))
+
+long_data <- t_quant_data_sle %>%
+  rownames_to_column("Sample") %>%   # Convert rownames to a column for merging
+  pivot_longer(
+    cols = -Sample,                   # All columns except "Sample" (i.e., protein columns)
+    names_to = "ProteinID",           # Name for the new column that will contain protein IDs
+    values_to = "log2_Intensity"      # Name for the new column that will contain intensity values
+  )
+
+filt_long_data <- filt_t_quant_data_sle %>%
+  rownames_to_column("Sample") %>%
+  pivot_longer(
+    cols = -Sample,
+    names_to = "ProteinID",
+    values_to = "log2_Intensity"
+  )
+
+# Add channel and set metadata
+long_data <- left_join(long_data, sle_ids[, c("set", "channel", "skujdom", "cluster", "Sample")], by = "Sample")
+filt_long_data <- left_join(filt_long_data, sle_ids[, c("set", "channel", "skujdom", "cluster", "Sample")], by = "Sample")
+
+long_data$set <- as.factor(long_data$set)
+long_data$channel <- as.factor(long_data$channel)
+long_data$cluster <- as.factor(long_data$cluster)
+long_data$skujdom <- as.factor(long_data$skujdom)
+long_data$log2_Intensity <- as.numeric(long_data$log2_Intensity)
+
+filt_long_data$set <- as.factor(filt_long_data$set)
+filt_long_data$channel <- as.factor(filt_long_data$channel)
+filt_long_data$cluster <- as.factor(filt_long_data$cluster)
+filt_long_data$skujdom <- as.factor(filt_long_data$skujdom)
+filt_long_data$log2_Intensity <- as.numeric(filt_long_data$log2_Intensity)
+```
+# Create boxplots
+```{r boxplots_log2intensities, fig.width=18, fig.height=10}
+#sets_colors = randomcoloR::distinctColorPalette(length(unique(sle_ids$set)))
+# Create the boxplot
+data_dist = ggplot(long_data, aes(x = channel, y = log2_Intensity, fill = channel)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Log2 Intensities by set") + #, x = "Channel", y = "Log2 Intensity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3") +
+  facet_wrap(~ set, nrow = 2)
+data_dist
+
+data_dist_filt = ggplot(filt_long_data, aes(x = channel, y = log2_Intensity, fill = channel)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Log2 Intensities by set") + #, x = "Channel", y = "Log2 Intensity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3") +
+  facet_wrap(~ set, nrow = 2)
+data_dist_filt
+
+
+#ggsave(filename = "log2intesity_dist_byset.jpeg", plot = data_dist, path = paste0(output_results_path, "/figs"),
+#       width = 18, height = 10)
+```
+
+# Missing data
+Plot missing data per sample and per set
+```{r pca}
+# Calculate missing values per sample
+missing_per_channel <- long_data %>%
+  group_by(channel) %>%
+  summarize(missing_values = sum(is.na(log2_Intensity)))
+
+# Missing values by protein
+missing_by_protein <- long_data %>%
+  group_by(ProteinID) %>%
+  summarize(missing_values = sum(is.na(log2_Intensity)), percentage_samples_missing = missing_values/length(rownames(se_object_MS))*100) %>%
+  rename(`Protein ID` = ProteinID)
+
+missing_by_protein_filt <- filt_long_data %>%
+  group_by(ProteinID) %>%
+  summarize(missing_values = sum(is.na(log2_Intensity)), percentage_samples_missing = missing_values/length(rownames(se_object_MS))*100) %>%
+  rename(`Protein ID` = ProteinID)
+
+# Add protein names to missing_by_protein dataset
+missing_by_protein_annot = merge(missing_by_protein, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
+  arrange(desc(percentage_samples_missing))
+
+
+missing_by_protein_filt_annot = merge(missing_by_protein_filt, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
+  arrange(desc(percentage_samples_missing))
+
+# Plot missing values per sample
+missing_values_channel = ggplot(missing_per_channel, aes(x = reorder(channel, missing_values), y = missing_values, fill = set)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Number of Missing Values per Channel", x = "Sample", y = "Missing Values") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+missing_values_channel
+
+#ggsave(filename = "missing_bychannel.jpeg", plot = missing_values_channel, path = paste0(output_results_path, "/figs"))
+# Calculate missing values per set
+missing_per_set <- long_data %>%
+  group_by(set) %>%
+  summarize(missing_values = sum(is.na(log2_Intensity)))
+
+# Plot missing values per set
+missing_values_set =ggplot(missing_per_set, aes(x = set, y = missing_values)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Number of Missing Values per Set", x = "Set", y = "Missing Values") +
+  theme_minimal()
+missing_values_set
+#ggsave(filename = "missing_byset.jpeg", plot = missing_values_set, path = paste0(output_results_path, "/figs"))
+
+
+# Plot missing values > X% for each protein
+th_missing = 80
+missing_values_protein_sample = ggplot(missing_by_protein_annot %>% 
+                                         filter(percentage_samples_missing > th_missing) %>%
+                                         arrange(desc(percentage_samples_missing)), aes(x = `Gene Name`, y = percentage_samples_missing)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = th_missing, linetype = "dashed", color = "red") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 6))
+missing_values_protein_sample
+
+
+# Prepare data for heatmap: Pivot to wide format
+heatmap_data <- long_data %>%
+  select(Sample, ProteinID, log2_Intensity) %>%
+  spread(key = ProteinID, value = log2_Intensity)
+
+# Convert to binary missing/not-missing for visualization
+missing_matrix <- is.na(heatmap_data[ , -1]) * 1  # Exclude Sample column
+
+# Plot heatmap of missing data
+Heatmap(missing_matrix, name = "Missing", col = c("gray", "red"),
+        column_title = "Proteins", row_title = "Samples",
+        cluster_columns = TRUE, cluster_rows = TRUE,
+        show_row_names = FALSE, show_column_names = FALSE)
+```
+
+Is any of the proteins more prevalent missing in any of the clusters.
+```{r}
+# Missing by protein and cluster
+missing_by_protein_cluster <- long_data %>%
+  group_by(ProteinID, cluster) %>%
+  summarise(
+    missing_values = sum(is.na(log2_Intensity)),
+    total_values = n(),
+    percentage_missing = (missing_values / total_values) * 100,
+    .groups = "drop"
+  ) %>%
+  rename(`Protein ID` = ProteinID)
+
+missing_by_protein_cluster_annot = merge(missing_by_protein_cluster, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
+  arrange(desc(percentage_missing))
+
+
+# Identify proteins with significant differential missingness
+results1_2 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 1]), sum(total_count[cluster == 1]) - sum(missing_count[cluster == 1]),
+      sum(missing_count[cluster == 2]), sum(total_count[cluster == 2]) - sum(missing_count[cluster == 2])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results1_ctrl <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 1]), sum(total_count[cluster == 1]) - sum(missing_count[cluster == 1]),
+      sum(missing_count[cluster == "ctrl"]), sum(total_count[cluster == "ctrl"]) - sum(missing_count[cluster == "ctrl"])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results2_ctrl <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 2]), sum(total_count[cluster == 2]) - sum(missing_count[cluster == 2]),
+      sum(missing_count[cluster == "ctrl"]), sum(total_count[cluster == "ctrl"]) - sum(missing_count[cluster == "ctrl"])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results3_ctrl <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 3]), sum(total_count[cluster == 3]) - sum(missing_count[cluster == 3]),
+      sum(missing_count[cluster == "ctrl"]), sum(total_count[cluster == "ctrl"]) - sum(missing_count[cluster == "ctrl"])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results4_ctrl <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 4]), sum(total_count[cluster == 4]) - sum(missing_count[cluster == 4]),
+      sum(missing_count[cluster == "ctrl"]), sum(total_count[cluster == "ctrl"]) - sum(missing_count[cluster == "ctrl"])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results1_3 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 1]), sum(total_count[cluster == 1]) - sum(missing_count[cluster == 1]),
+      sum(missing_count[cluster == 3]), sum(total_count[cluster == 3]) - sum(missing_count[cluster == 3])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results1_ctrl <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 1]), sum(total_count[cluster == 1]) - sum(missing_count[cluster == 1]),
+      sum(missing_count[cluster == "ctrl"]), sum(total_count[cluster == "ctrl"]) - sum(missing_count[cluster == "ctrl"])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+  
+results1_4 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 1]), sum(total_count[cluster == 1]) - sum(missing_count[cluster == 1]),
+      sum(missing_count[cluster == 4]), sum(total_count[cluster == 4]) - sum(missing_count[cluster == 4])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results2_3 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 2]), sum(total_count[cluster == 2]) - sum(missing_count[cluster == 2]),
+      sum(missing_count[cluster == 3]), sum(total_count[cluster == 3]) - sum(missing_count[cluster == 3])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results2_4 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 2]), sum(total_count[cluster == 2]) - sum(missing_count[cluster == 2]),
+      sum(missing_count[cluster == 4]), sum(total_count[cluster == 4]) - sum(missing_count[cluster == 4])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+results3_4 <- missing_by_cluster %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[cluster == 3]), sum(total_count[cluster == 3]) - sum(missing_count[cluster == 3]),
+      sum(missing_count[cluster == 4]), sum(total_count[cluster == 4]) - sum(missing_count[cluster == 4])
+    ), nrow = 2)
+  )$p.value) %>% filter(p_value < 0.05)
+
+
+results_set <- missing_by_set %>%
+  group_by(ProteinID) %>%
+  summarize(p_value = fisher.test(
+    matrix(c(
+      sum(missing_count[set == 1]), sum(total_count[set == 1]) - sum(missing_count[set == 1]),
+      sum(missing_count[set == 2]), sum(total_count[set == 2]) - sum(missing_count[set == 2])
+    ), nrow = 2)
+  )$p.value)
+
+# Adjust p-values for multiple testing
+#results <- results %>%
+#  mutate(adjusted_p = p.adjust(p_value, method = "BH"))
+
+#results_set <- results_set %>%
+#  mutate(adjusted_p = p.adjust(p_value, method = "BH"))
+
+#results_set[results_set$adjusted_p < 0.05, ]
+```
+
+All against all comparison
+```{r}
+# Create a table of missing values by protein and cluster
+missing_by_group <- long_data %>%
+  mutate(missing = is.na(log2_Intensity)) %>%
+  group_by(cluster, ProteinID) %>%
+  summarize(missing_count = sum(missing), total_count = n(), .groups = 'drop') %>%
+  mutate(missing_proportion = missing_count / total_count)
+
+# Pivot to create a contingency table for the Chi-squared test
+missing_matrix <- missing_by_group %>%
+  pivot_wider(names_from = cluster, values_from = missing_count, values_fill = list(missing_count = 0)) %>%
+  select(-ProteinID)
+
+# Perform a Chi-squared test
+chi_test <- chisq.test(missing_matrix)
+print(chi_test)
+
+```
+
+
+# Impute data
+Impute missing values by replacing the NA values with the minimun observed.
+```{r}
+# Calculate the overall minimum log2_Intensity value, excluding NA
+# min - 1 assures that a ver low value but non-zero intensity is used without the value being NA.
+overall_min <- min(filt_long_data$log2_Intensity, na.rm = TRUE) - 1
+
+# Impute missing values within each ProteinID group
+
+imputed_data <- long_data %>%
+  group_by(ProteinID) %>%
+    #filter(!all(is.na(log2_Intensity))) %>%  
+  mutate(
+    log2_Intensity = ifelse(
+      is.na(log2_Intensity),
+      if (all(is.na(log2_Intensity))) overall_min else min(log2_Intensity, na.rm = TRUE) - 1,
+      log2_Intensity
+    )
+  ) %>%
+  ungroup()
+
+filt_imputed_data <- filt_long_data %>%
+  group_by(ProteinID) %>%
+    #filter(!all(is.na(log2_Intensity))) %>%  
+  mutate(
+    log2_Intensity = ifelse(
+      is.na(log2_Intensity),
+      if (all(is.na(log2_Intensity))) overall_min else min(log2_Intensity, na.rm = TRUE) - 1,
+      log2_Intensity
+    )
+  ) %>%
+  ungroup()
+
+# Compare distributions before and after imputation
+density_before <- filt_long_data %>%
+  filter(!is.na(log2_Intensity)) %>%
+  ggplot(aes(x = log2_Intensity)) +
+  geom_density(fill = "steelblue", alpha = 0.6) +
+  labs(title = "Before Imputation", x = "log2 Intensity", y = "Density") +
+  theme_minimal()
+
+# Density after imputation
+density_after <- filt_imputed_data %>%
+  ggplot(aes(x = log2_Intensity)) +
+  geom_density(fill = "darkorange", alpha = 0.6) +
+  labs(title = "After Imputation", x = "log2 Intensity", y = "Density") +
+  theme_minimal()
+
+before_ater_imput <- cowplot::plot_grid(density_before, density_after, ncol = 2)
+before_ater_imput
+```
+
+See distribution of imputed data
+```{r imputed_dist, fig.width=10, fig.height=6}
+data_dist = ggplot(filt_imputed_data, aes(x = channel, y = log2_Intensity, fill = channel)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Log2 Intensities by set in imputed data") + #, x = "Channel", y = "Log2 Intensity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_brewer(palette = "Set3") +
+  facet_wrap(~ set, nrow = 2)
+data_dist
+
+
+#ggsave(filename = "log2intesity_dist_byset_imputed.jpeg", plot = data_dist, path = paste0(output_results_path, "/figs"),
+#       width = 18, height = 10)
+```
+
+```{r}
+# % missing per protein
+filt_long_data %>%
+  group_by(ProteinID) %>%
+  summarise(pct_missing = mean(is.na(log2_Intensity))) %>%
+  ggplot(aes(x = pct_missing)) +
+  geom_histogram(bins = 30, fill = "steelblue") +
+  labs(title = "Missingness per Protein", x = "% Missing", y = "Count")
+
+```
+
+#TODO Try different imputation methods
+
+Prepare data for limma
+```{r limma_preprocess}
+# Reshape the data to a wide format suitable for `limma`
+wide_data <- imputed_data %>%
+  select(Sample, ProteinID, log2_Intensity) %>%
+  spread(key = Sample, value = log2_Intensity)
+
+filt_wide_data <-filt_imputed_data %>%
+  select(Sample, ProteinID, log2_Intensity) %>%
+  spread(key = Sample, value = log2_Intensity)
+
+# Extract the expression matrix and define the design matrix
+expression_matrix <- as.matrix(wide_data[, -1])  # Exclude the "Sample" column
+filt_expression_matrix <- as.matrix(filt_wide_data[, -1])
+
+# Create a design matrix making sure the ids are in the same order as the ones in the exxpression matrix
+sle_ids_ordered <- sle_ids[match(colnames(expression_matrix), sle_ids$Sample), ]
+
+design <- model.matrix(~ 0 + factor(sle_ids_ordered$cluster, levels = c("ctrl", "1", "2", "3", "4")))
+colnames(design) <- c("ctrl", "Cluster1", "Cluster2", "Cluster3", "Cluster4")
+
+# These must be true
+all(sle_ids_ordered$Sample == colnames(expression_matrix))
+all(sle_ids_ordered$Sample == colnames(filt_expression_matrix))  
+```
+
+
+```{r}
+# Fit the model
+fit <- lmFit(expression_matrix, design)
+filt_fit <- lmFit(filt_expression_matrix, design)
+
+# Define contrasts for each cluster vs. control
+contrast_matrix <- makeContrasts(
+  Cluster1_vs_ctrl = Cluster1 - ctrl,
+  Cluster2_vs_ctrl = Cluster2 - ctrl,
+  Cluster3_vs_ctrl = Cluster3 - ctrl,
+  Cluster4_vs_ctrl = Cluster4 - ctrl,
+  levels = design
+)
+
+# Apply contrasts and calculate statistics
+fit2 <- contrasts.fit(fit, contrast_matrix)
+fit2 <- eBayes(fit2)
+
+filt_fit2 <- contrasts.fit(filt_fit, contrast_matrix)
+filt_fit2 <- eBayes(filt_fit2)
+
+# Get results for each contrast
+results <- list(
+  Cluster1_vs_ctrl = topTable(fit2, coef = "Cluster1_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster2_vs_ctrl = topTable(fit2, coef = "Cluster2_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster3_vs_ctrl = topTable(fit2, coef = "Cluster3_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster4_vs_ctrl = topTable(fit2, coef = "Cluster4_vs_ctrl", adjust = "BH", number = Inf)
+)
+
+
+results_filt <- list(
+  Cluster1_vs_ctrl = topTable(filt_fit2, coef = "Cluster1_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster2_vs_ctrl = topTable(filt_fit2, coef = "Cluster2_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster3_vs_ctrl = topTable(filt_fit2, coef = "Cluster3_vs_ctrl", adjust = "BH", number = Inf),
+  Cluster4_vs_ctrl = topTable(filt_fit2, coef = "Cluster4_vs_ctrl", adjust = "BH", number = Inf)
+)
+
+View(results_filt$Cluster1_vs_ctrl)
+
+
+```
+
+
+Plot results
+```{r}
+# Define significance thresholds
+logFC_threshold <- 1
+pval_threshold <- 0.05
+
+# Loop through each result to create a volcano plot
+volcano_plots <- lapply(names(results), function(cluster) {
+  # Extract data for this cluster
+  res <- results[[cluster]]
+  
+  # Add significance labels
+  res <- res %>%
+    mutate(Significant = case_when(
+      adj.P.Val < pval_threshold & abs(logFC) > logFC_threshold ~ "Significant",
+      TRUE ~ "Not Significant"
+    ))
+  
+  # Create volcano plot
+  ggplot(res, aes(y = -log10(adj.P.Val), x = logFC, color = Significant)) +
+    geom_point(alpha = 0.7, size = 1.5) +
+    #scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+    labs(title = paste("Volcano Plot:", cluster, "vs Control"),
+         y = "Log2 Fold Change",
+         x = "-Log10 Adjusted p-value") +
+    theme_minimal() +
+    theme(legend.position = "top")
+})
+
+volcano_plots
+
+
+# Loop through each result to create a volcano plot
+filt_volcano_plots <- lapply(names(results_filt), function(cluster) {
+  # Extract data for this cluster
+  res_filt <- results_filt[[cluster]]
+  
+  # Add significance labels
+  res_filt <- res_filt %>%
+    mutate(Significant = case_when(
+      adj.P.Val < pval_threshold & abs(logFC) > logFC_threshold ~ "Significant",
+      TRUE ~ "Not Significant"
+    ))
+  
+  # Create volcano plot
+  ggplot(res_filt, aes(y = -log10(adj.P.Val), x = logFC, color = Significant)) +
+    geom_point(alpha = 0.7, size = 1.5) +
+    #scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+    labs(title = paste("Volcano Plot:", cluster, "vs Control"),
+         y = "Log2 Fold Change",
+         x = "-Log10 Adjusted p-value") +
+    theme_minimal() +
+    theme(legend.position = "top")
+})
+
+filt_volcano_plots
+
+
+
+gene_metadata$protnum <- rownames(gene_metadata)
+
+# Annotate results with protein numbers
+results_annot_filt <- lapply(results_filt, function(x){
+  x$protnum <- rownames(x)
+  match(x, gene_metadata, by.x = "protnum", by.y = "protnum")
+})
+
+results_annot <- lapply(results, function(x){
+  x$protnum <- rownames(x)
+  merge(x, gene_metadata, by.x = "protnum", by.y = "protnum")
+})
+
+```
+Plot volcanos annotated
+```{r, volcanos_annot, fig.width=8, fig.height=4}
+filt_volcano_plots <- lapply(names(results_annot_filt), function(cluster) {
+  res_filt <- results_annot_filt[[cluster]]
+  
+  # Add significance labels
+  res_filt <- res_filt %>%
+    mutate(Significant = case_when(
+      adj.P.Val < pval_threshold & abs(logFC) > logFC_threshold ~ "Significant",
+      TRUE ~ "Not Significant"
+    )) %>%
+    # Optional: add a label for top significant hits
+    mutate(Label = ifelse(Significant == "Significant" & -log10(adj.P.Val) > -log10(pval_threshold) + 1, as.character(`Gene Name`), NA))
+
+  ggplot(res_filt, aes(x = logFC, y = -log10(adj.P.Val), color = Significant)) +
+    geom_point(alpha = 0.7, size = 1.5) +
+    scale_color_manual(values = c("Significant" = "red", "Not Significant" = "grey")) +
+    geom_hline(yintercept = -log10(pval_threshold), linetype = "dashed", color = "blue") +
+    geom_vline(xintercept = c(-logFC_threshold, logFC_threshold), linetype = "dashed", color = "blue") +
+    geom_text_repel(aes(label = Label), size = 4, max.overlaps = 10) +
+    labs(
+      title = paste("Volcano Plot:", "Control vs", cluster),
+      x = "Log2 Fold Change",
+      y = "-Log10 Adjusted p-value"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "top")
+})
+
+filt_volcano_plots
+```
+Plot some of the significant proteins
+```{r plot_protein_expr}
+protein <- "ITGB4"
+prot_id <- gene_metadata %>% 
+  filter(`Gene Name` == protein) %>%
+  pull(`Protein ID`)
+
+prot_id <- "ENSP00000504676.1"
+
+
+plot_data <- filt_imputed_data %>%
+  filter(ProteinID == prot_id, cluster %in% c("ctrl", "1"))
+
+
+ggplot(plot_data, aes(x = cluster, y = log2_Intensity, fill = cluster)) +
+  geom_violin(trim = FALSE, alpha = 0.5) +
+  geom_boxplot(width = 0.2, outlier.shape = NA) +
+  geom_jitter(width = 0.1, alpha = 0.6, size = 1.5) +
+  labs(
+    title = paste("Expression of", protein),
+    y = "Log2 Intensity",
+    x = "Group"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+results_annot$Cluster1_vs_ctrl %>% filter(`Gene Name` == "ITGB4")
+
+
+```
+
+Volcano plots
+```{r}
+# Define the clusters in your data
+clusters <- c("1", "2", "3", "4")
+
+# Prepare to store results
+pairwise_results <- list()
+
+# Loop through each unique pair of clusters
+for (i in 1:(length(clusters) - 1)) {
+  for (j in (i + 1):length(clusters)) {
+    # Get the two clusters to compare
+    cluster1 <- clusters[i]
+    cluster2 <- clusters[j]
+    
+    # Subset data to only include samples in these two clusters
+    selected_samples <- sle_ids$Sample[sle_ids$cluster %in% c(cluster1, cluster2)]
+    subset_data <- expression_matrix[, selected_samples]
+    
+    # Update design matrix for this comparison
+    comparison_data <- sle_ids %>%
+      filter(cluster %in% c(cluster1, cluster2)) %>%
+      arrange(match(Sample, selected_samples))
+    
+    # Create a design matrix for the two clusters
+    design <- model.matrix(~ 0 + factor(comparison_data$cluster, levels = c(cluster1, cluster2)))
+    colnames(design) <- c(paste0("Cluster", cluster1), paste0("Cluster", cluster2))
+    
+    # Fit linear model
+    fit <- lmFit(subset_data, design)
+    
+    # Set up contrasts to compare cluster1 vs cluster2
+    contrast <- makeContrasts(
+      diff = paste0("Cluster", cluster1, " - Cluster", cluster2),
+      levels = design
+    )
+    
+    # Apply contrasts and compute statistics
+    fit2 <- contrasts.fit(fit, contrast)
+    fit2 <- eBayes(fit2)
+    
+    # Extract results and add to list
+    result <- topTable(fit2, adjust = "BH", number = Inf)
+    pairwise_results[[paste0("Cluster", cluster1, "_vs_Cluster", cluster2)]] <- result
+  }
+}
+
+
+
+# Extract protein annotations
+significant_proteins <- lapply(pairwise_results, function(x) {
+  # Get the rownames of significant proteins, removing NA values
+  significant_ids <- rownames(na.omit(x[x$adj.P.Val < 0.05 & abs(x$logFC) > 1, ]))
+  
+  # Match these IDs to `protein_metadata` to get corresponding protein names
+  gene_metadata[row_number(gene_metadata) %in% significant_ids, ] %>%
+    #filter(Protein.ID %in% significant_ids) %>%
+    pull(`Protein ID`, `Gene Name`)  # or use another column if needed
+})
+
+protein_metadata <- filt_nonvariable_gene_metadata
+
+# Print or inspect the list of significant proteins for each comparison
+protein_metadata$prot_number <- row_number(filt_nonvariable_gene_metadata)
+
+# Add protein number to lists
+pairwise_results_protnumber <- lapply(pairwise_results, function(x) x %>% mutate(prot_number = as.numeric(rownames(x))))
+# Add protein names to results
+pairwise_results_protnumber_wprotnames <- lapply(pairwise_results_protnumber, function(x) y = inner_join(x, protein_metadata, by = "prot_number"))
+```
+
+Run enrichr analysis
+```{r}
+
+```
+
+Volcano plots
+```{r volcanos}
+# Define the significance thresholds
+log2FC_threshold <- 1  # Adjust this based on your study's requirements
+pvalue_threshold <- 0.05
+
+log2FC_threshold_min <- 0.05
+
+# Create volcano plots for each comparison
+for (comparison in names(pairwise_results)) {
+  # Extract results for the current comparison
+  result <- pairwise_results[[comparison]]
+  
+  # Create a new column to label points based on significance
+  result$Significance <- "Not Significant"
+  result$Significance[result$adj.P.Val < pvalue_threshold & abs(result$logFC) > log2FC_threshold] <- "Significant"
+  result$rownum <- rownames(result)
+  
+  protein_metadata$rownum <- row_number(protein_metadata)
+  
+  merged_results = merge(result, protein_metadata, by = "rownum")
+  
+  significant_labels = merged_results[merged_results$Significance == "Significant", "Gene Name"]
+  log0.5_labels = merged_results[abs(merged_results$logFC) > log2FC_threshold_min & abs(merged_results$logFC < 1), "Gene Name"]
+
+  print(comparison)
+  print(significant_labels)
+  
+  
+  volcano_plot <- ggplot(merged_results, aes(x = logFC, y = -log10(adj.P.Val), color = Significance)) +
+  geom_point(aes(size = Significance), alpha = 0.6) +
+  scale_color_manual(values = c("Not Significant" = "grey70", "Significant" = "#D55E00", "abs(logFC) > 0.5 < 1" = "steelblue")) +
+  scale_size_manual(values = c("Not Significant" = 1.5, "Significant" = 2.5)) +
+  labs(
+    title = paste(comparison),
+    x = expression(Log[2]~Fold~Change),
+    y = expression(-Log[10]~"Adjusted P-Value")
+  ) +
+  theme_bw(base_size = 14) +
+  theme(
+    plot.title = element_text(strsplit(split = "_", comparison),
+                              hjust = 0.5, face = "bold", size = 12),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.position = "none"  # Removes the legend
+  ) +
+  geom_text_repel(
+    data = subset(merged_results, Significance == "Significant"),
+    aes(label = `Gene Name`),
+    size = 3,
+    max.overlaps = 10,
+    box.padding = 0.3,
+    point.padding = 0.2,
+    segment.color = "grey50"
+  )
+
+# Print the plot
+ # ggsave(filename = paste0(comparison, ".jpeg"), plot = volcano_plot, path = output_results_path)
+print(volcano_plot)
+}
+volcano_plot
+```
+Color all points
+```{r moderateFC, fig.height=5.5, fig.width=8}
+# Define the significance thresholds
+log2FC_threshold <- 1  # Adjust this based on your study's requirements
+pvalue_threshold <- 0.05
+log2FC_threshold_min <- 0.5
+
+# Create volcano plots for each comparison
+for (comparison in names(pairwise_results)) {
+  # Extract results for the current comparison
+  result <- pairwise_results[[comparison]]
+  
+  # Create a new column to label points based on significance
+  result$Significance <- "Not Significant"
+  result$Significance[result$adj.P.Val < pvalue_threshold & abs(result$logFC) >= log2FC_threshold] <- "P-adj < 0.05, abs(logFC) >= 1"
+  result$Significance[abs(result$logFC) > log2FC_threshold_min & abs(result$logFC) < log2FC_threshold] <- "P-adj > 0.05, abs(logFC) > 0.5 < 1"
+  result$Significance[result$adj.P.Val < pvalue_threshold & abs(result$logFC) < log2FC_threshold] <- "P-adj < 0.05, abs(logFC) < 1"
+  
+  # Merge with protein metadata
+  result$rownum <- rownames(result)
+  protein_metadata$rownum <- row_number(protein_metadata)
+  merged_results <- merge(result, protein_metadata, by = "rownum")
+
+  # Generate the volcano plot
+  volcano_plot <- ggplot(merged_results, aes(x = logFC, y = -log10(adj.P.Val), color = Significance)) +
+    geom_point(aes(colour = Significance, size = Significance), alpha = 0.6) +
+    scale_color_manual(values = c(
+      "Not Significant" = "grey70", 
+      "P-adj < 0.05, abs(logFC) >= 1" = "#D55E00", 
+      "P-adj > 0.05, abs(logFC) > 0.5 < 1" = "steelblue", 
+      "P-adj < 0.05, abs(logFC) < 1" = "darkorchid"
+    )) +
+    scale_size_manual(values = c(
+      "Not Significant" = 1, 
+      "P-adj < 0.05, abs(logFC) >= 1" = 3.5, 
+      "P-adj > 0.05, abs(logFC) > 0.5 < 1" = 1.5, 
+      "P-adj < 0.05, abs(logFC) < 1" = 1.5
+    )) +
+    labs(
+      title = paste(comparison),
+      x = expression(Log[2]~Fold~Change),
+      y = expression(-Log[10]~"Adjusted P-Value")
+    ) +
+    theme_bw(base_size = 14) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(size = 10),
+      legend.position = "right"  # Places the legend on the right side
+    ) +
+    geom_text_repel(
+      data = subset(merged_results, Significance == "P-adj < 0.05, abs(logFC) >= 1"),
+      aes(label = `Gene Name`),
+      size = 3,
+      max.overlaps = 10,
+      box.padding = 0.3,
+      point.padding = 0.2,
+      segment.color = "grey50"
+    ) +
+    geom_text_repel(
+      data = subset(merged_results, Significance == "P-adj > 0.05, abs(logFC) > 0.5 < 1"),
+      aes(label = `Gene Name`),
+      size = 3,
+      color = "steelblue",
+      max.overlaps = 10,
+      box.padding = 0.3,
+      point.padding = 0.2,
+      segment.color = "grey50"
+    ) +
+    geom_text_repel(
+      data = subset(merged_results, Significance == "P-adj < 0.05, abs(logFC) < 1"),
+      aes(label = `Gene Name`),
+      size = 3,
+      color = "darkorchid",
+      max.overlaps = 10,
+      box.padding = 0.3,
+      point.padding = 0.2,
+      segment.color = "grey50"
+    )
+  #ggsave(filename = paste0(comparison, "_allannot.jpeg"), plot = volcano_plot, path = paste0(output_results_path, "/figs"),
+  #       width = 8, height = 5.5)
+  
+  ggsave(filename = paste0(comparison, "_allannot.svg"), plot = volcano_plot, path = output_results_path,
+         width = 8, height = 5.5)
+  # Print the plot
+  print(volcano_plot)
+}
+```
+merged results 
+```{r}
+sig_pval <- 0.05
+results_list <- Map(function(pairwise_results, name){
+  pairwise_results$rownum <- rownames(pairwise_results)
+  protein_metadata$rownum <- row_number((protein_metadata))
+  merged_results <- merge(pairwise_results, protein_metadata, by ="rownum")
+  merged_results %>% 
+    filter(adj.P.Val < sig_pval & abs(logFC) > 0.5) %>%
+    mutate(comparison = name)
+}, pairwise_results, names(pairwise_results))
+
+
+# Merge all results
+significant_results_all <- bind_rows(results_list)
+significant_results_all
+```
+
+
+Extract names of significant proteins
+```{r significant_heatmap}
+significant_proteins <- significant_results_all$`Protein ID`
+wide_data_significant_clustercompare <- wide_data %>% 
+  filter(ProteinID %in% significant_proteins)
+
+wide_data_wgene_names <- merge(protein_metadata[c("Protein ID", "Gene Name")], wide_data_significant_clustercompare, by.y="ProteinID", by.x= "Protein ID" )
+wide_data_wgene_names
+
+clusters_ids_nonctrls <- sle_ids %>%
+  filter(cluster != "ctrl") %>%
+  pull(Sample)
+
+expr_matrix <- wide_data_wgene_names %>% select(all_of(c("Gene Name", clusters_ids_nonctrls)))#[c(-1,-2)]
+expr_matrix <- expr_matrix[c(-1,-2)]
+
+rownames(expr_matrix) <- wide_data_wgene_names$`Gene Name`
+#expr_matrix <- as.matrix(t(expr_matrix))
+expr_matrix
+
+sample_anno <- sle_ids %>%
+  filter(cluster != "ctrl")
+
+#sample_anno$cluster <- ifelse(sle_ids$cluster == "ctrl", NA, sle_ids$cluster)
+
+# Merge ethnicity annotations with patient number
+local_sle_files_path <- "/home/anagon@ad.cmm.se/Documents/VM_shared_files/Lupus_KICohort_files"
+# Read patient data to annotate with cluster IDs
+cluster_numbers_patient_ids <- read_xlsx(file.path(local_sle_files_path, "SLE_870_Socialstyrelsen_230714_unique_predict_control_sex_modPN_unlocked.xlsx"))
+
+merged_full_db_sample_anno <- merge(sample_anno, cluster_numbers_patient_ids[, c("Nummer", "Kön", "Ethnicity_2", "Clustering_paper")], by.x = "nummer", by.y = "Nummer")
+
+col_anno <- HeatmapAnnotation(
+  ethnicity = merged_full_db_sample_anno$Ethnicity_2,
+  sex = merged_full_db_sample_anno$Kön,
+  cluster = sample_anno$cluster,
+  col = list(
+    phenotype = acr_subgroups_paper_colors()[c("case", "control")],
+    sex = c("Man" = "#C8D9F2", "Kvinna" = "#B983A7"),
+    ethnicity = c("African" = "#4DB5BC", "Asian" = "#FF876F", "Europ.Caucasian" = "#54B986", "Hispanic" = "#FFC66D", "NA" = "gray"),
+    cluster = acr_subgroups_paper_colors()[c("1", "2", "3", "4")]
+  )
+)
+
+
+ComplexHeatmap::Heatmap(
+  expr_matrix,
+  name = "Expression",
+  col = colorRamp2(c(-2, 0, 2), c("#4DB5BC", "white", "#B84145")),
+  top_annotation = col_anno,
+  #right_annotation = row_anno,
+  show_column_names = FALSE,
+  show_row_names = TRUE,
+  cluster_rows = FALSE,
+  cluster_columns = TRUE,
+  row_names_side = "left",
+  column_title = "Differentially Abundant Proteins Cases v.s. Controls",
+  cluster_row_slices = FALSE,
+  show_row_dend = FALSE,
+  cluster_column_slices = FALSE,
+  show_column_dend = FALSE,
+  row_names_gp = gpar(fontsize = 7),
+  #column_split = 
+  #column_km = 4
+)
+
+
+
+
+```
+
+
+
+```{r extract_values_forsig_proteins}
+significant_proteins
+
+
+C4B.1_exp <- imputed_data %>%
+  filter(ProteinID %in% "ENSP00000407942.2") # Significant
+
+colnames(C4B.1_exp)[7] <- "subgroup"
+
+C4B.2_exp <- imputed_data %>%
+  filter(ProteinID  %in% "ENSP00000414200.2") # Not significant
+colnames(C4B.2_exp)[7] <- "subgroup"
+
+IGHG3_exp <- imputed_data %>%
+  filter(ProteinID %in% "ENSP00000374993.2") # Significant
+colnames(IGHG3_exp)[7] <- "subgroup"
+```
+
+
+Plot distribution of values for C4B and IGHG3
+```{r distribution_of_values, fig.width=6, fig.height=5}
+output_path <- "/home/anagon@ad.cmm.se/Documents/grant_applications/VR_2025_ES/Figs"
+
+c4b_exp <- C4B.1_exp %>%
+  ggplot(aes(x = log2_Intensity, y = subgroup)) +
+  geom_boxplot(aes(color = subgroup), fill = NA, width = 0.1, outlier.size = 0.5) + 
+  geom_point(
+    shape = "|",
+    size = 3.5,
+    alpha = 0.5,
+    position = position_nudge(y = -0.2)
+  ) + 
+  stat_slab(
+    aes(fill = subgroup),
+    alpha = 0.8,
+    color = "black",
+    linewidth = 0.25,
+    position = position_nudge(y = 0.075),
+    height = 0.75
+  ) + 
+  geom_signif(
+    comparisons = list(c("1", "3")),  # Compare groups 1 and 3
+    y_position = max(C4B.1_exp$log2_Intensity, na.rm = TRUE) + 0.3,  # Adjust position
+    annotation = "****",
+    tip_length = 0.02,
+    size = 0.3
+  ) +
+  scale_fill_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  scale_color_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  theme_ggdist(base_size = 12) +  # Clean minimal theme with a base font size
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12),  # Centered title
+    axis.title.x = element_text(size = 12),  # Larger axis labels
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text = element_text(size = 11),  # Readable axis text
+    legend.position = "right",  # Move legend to the side
+  ) +
+  labs(
+    title = "Complement C4B (Chido blood group) Expression",
+    x = "Log2 Intensity",
+    y = "Subgroup"
+  )
+c4b_exp
+ggsave(filename = "c4b_log2_intensities_persubgroup.jpeg", plot = c4b_exp, path = output_path, height = 5, width = 6)
+
+ighg3_exp <- IGHG3_exp %>%
+  ggplot(aes(x = log2_Intensity, y = subgroup)) +
+  geom_boxplot(aes(color = subgroup), fill = NA, width = 0.1, outlier.size = 0.5) + 
+  geom_point(
+    shape = "|",
+    size = 3.5,
+    alpha = 0.5,
+    position = position_nudge(y = -0.2)
+  ) + 
+  stat_slab(
+    aes(fill = subgroup),
+    alpha = 0.8,
+    color = "black",
+    linewidth = 0.25,
+    position = position_nudge(y = 0.075),
+    height = 0.75
+  ) + 
+  geom_signif(
+    comparisons = list(c("2", "4")),  # Compare groups 1 and 3
+    y_position = max(IGHG3_exp$log2_Intensity, na.rm = TRUE) + 0.3,  # Adjust position
+    annotation = "**",
+    tip_length = 0.02,
+    size = 0.3
+  ) +
+  scale_fill_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  scale_color_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  theme_ggdist(base_size = 12) +  # Clean minimal theme with a base font size
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12),  # Centered title
+    axis.title.x = element_text(size = 12),  # Larger axis labels
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text = element_text(size = 11),  # Readable axis text
+    legend.position = "right",  # Move legend to the side
+  ) +
+  labs(
+    title = "Immunoglobulin heavy constant gamma 3 Expression",
+    x = "Log2 Intensity",
+    y = "Subgroup"
+  )
+
+ggsave(filename = "ighg3_log2_intensities_persubgroup.jpeg", plot = ighg3_exp, path = output_path, height = 5, width = 6)
+
+
+C4B.2_exp %>%
+  ggplot(aes(x = log2_Intensity, y = subgroup)) +
+  geom_boxplot(aes(color = subgroup), fill = NA, width = 0.1, outlier.size = 0.5) + 
+  geom_point(
+    shape = "|",
+    size = 3.5,
+    alpha = 0.5,
+    position = position_nudge(y = -0.2)
+  ) + 
+  stat_slab(
+    aes(fill = subgroup),
+    position = position_nudge(y = 0.075),
+    height = 0.75
+  ) + 
+  scale_fill_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  scale_color_manual(values = c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", "3" = "#438943", "4" = "#b34b4c")) + 
+  theme_ggdist(base_size = 12) +  # Clean minimal theme with a base font size
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 12),  # Centered title
+    axis.title.x = element_text(size = 12),  # Larger axis labels
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text = element_text(size = 11),  # Readable axis text
+    legend.position = "right",  # Move legend to the side
+  ) +
+  labs(
+    title = "Complement C4B (Chido blood group) Expression",
+    x = "Log2 Intensity",
+    y = "Subgroup"
+  )
+
+
+```
+
+
+Filter all values for C4B and IGHG3.
+```{r}
+sign_proteins_numbers <- protein_metadata %>% 
+  filter(`Protein ID` %in% c("ENSP00000407942.2", "ENSP00000374993.2")) %>%
+  pull(prot_number)
+
+clust13_both_prots <- pairwise_results_protnumber$Cluster1_vs_Cluster3 %>% filter(prot_number %in% sign_proteins_numbers)
+clust12_both_prots <- pairwise_results_protnumber$Cluster1_vs_Cluster2 %>% filter(prot_number %in% sign_proteins_numbers)
+clust14_both_prots <- pairwise_results_protnumber$Cluster1_vs_Cluster4 %>% filter(prot_number %in% sign_proteins_numbers)
+clust23_both_prots <- pairwise_results_protnumber$Cluster2_vs_Cluster3 %>% filter(prot_number %in% sign_proteins_numbers)
+clust24_both_prots <- pairwise_results_protnumber$Cluster2_vs_Cluster4 %>% filter(prot_number %in% sign_proteins_numbers)
+clust34_both_prots <- pairwise_results_protnumber$Cluster3_vs_Cluster4 %>% filter(prot_number %in% sign_proteins_numbers)
+```
+inspect results for comparisons
+```{r}
+fc_th = 1
+sb1_sb2_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster1_vs_Cluster2 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB1_SB2")
+
+sb1_sb3_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster1_vs_Cluster3 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB1_SB3")
+
+sb1_sb4_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster1_vs_Cluster4 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB1_SB4")
+
+sb2_sb3_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster2_vs_Cluster3 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB2_SB3")
+
+sb2_sb4_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster2_vs_Cluster4 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB2_SB4")
+
+sb3_sb4_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster3_vs_Cluster4 %>% 
+  filter(abs(logFC) > fc_th) %>% 
+  mutate(comparison = "SB3_SB4")
+```
+
+Heatmap of all selected proteins
+```{r heatmap}
+merged_fcfilt_allcomparisons <- bind_rows(sb1_sb2_fcfilt, sb1_sb3_fcfilt, sb1_sb4_fcfilt, sb2_sb3_fcfilt, sb2_sb4_fcfilt, sb3_sb4_fcfilt)
+
+# Extract the genes that are at least 0.5 logFC 
+fcfilt_prot_ids <- unique(merged_fcfilt_allcomparisons$`Protein ID`)
+imputed_data_fc_filt <- imputed_data %>% filter(ProteinID %in% fcfilt_prot_ids)
+imputed_data_fc_filt <- imputed_data_fc_filt %>% rename(cluster = "subgroup")
+
+# Reshape data
+heatmap_data <- imputed_data_fc_filt %>%
+  group_by(ProteinID) %>%
+  #summarise(mean_log2_Intensity = mean(log2_Intensity, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = subgroup, values_from = log2_Intensity)
+
+# Convert to matrix (removing ProteinID column)
+heatmap_matrix <- as.matrix(heatmap_data[, -1])
+
+# If no gene name is present, we can 
+gene_names <- heatmap_data %>%
+  left_join(protein_metadata, by = c("ProteinID" = "Protein ID")) %>%
+  mutate(Gene.Name = ifelse(`Gene Name`=="NA", ifelse(Description == "NA", ProteinID, Description), `Gene Name`)) %>%
+  pull(Gene.Name)
+
+rownames(heatmap_matrix) <- gene_names
+
+```
+```{r, fig.height=5, fig.width=5}
+
+
+# Define a color palette for subgroups/samples
+sample_colors <- c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", 
+                   "3" = "#438943", "4" = "#b34b4c")
+
+col_ha <- HeatmapAnnotation(subgroup = colnames(heatmap_data)[2:6], 
+                            col = list(subgroup = sample_colors))
+font_size = 10
+
+# Generate heatmap with high-quality settings
+heatmap_fc_filt <- Heatmap(heatmap_matrix, 
+        name = "Log2 Intensity", 
+        col = colorRampPalette(c("#3d7196", "white", "#b34b4c"))(10),
+        top_annotation = col_ha,  # Adds colored sample annotation
+        row_names_gp = gpar(fontsize = font_size),  # Adjust Y-axis text size
+        column_names_gp = gpar(fontsize = 0),  # Adjust X-axis text size
+        border = TRUE,
+        cluster_columns = FALSE)  # Add clear borders
+
+
+draw(heatmap_fc_filt)
+
+# Create a sample annotation dataframe
+annotation_col <- data.frame(subgroup = colnames(heatmap_data)[2:6])
+rownames(annotation_col) <- colnames(heatmap_matrix)[1:5]
+
+# Define annotation colors
+annotation_colors <- list(subgroup = sample_colors)
+
+pheatmap(heatmap_matrix, 
+         annotation_col = annotation_col,   
+         annotation_colors = annotation_colors,
+         fontsize_row = 7,   
+         fontsize_col = 0,  # Removes X-axis labels
+         cluster_rows = TRUE, 
+         cluster_cols = FALSE, 
+         show_rownames = TRUE,
+         show_colnames = FALSE,  # Removes bottom column names
+         border_color = "gray",  
+         color = colorRampPalette(c("blue", "gray", "red"))(100),  # Higher contrast
+         main = "Protein Expression Heatmap")
+
+```
