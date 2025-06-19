@@ -1,44 +1,23 @@
-make_aa_lineplot <- function(){
-  # Subset dataframe to contain only columns in aa
-  data.subset.aa <- subset(data.subset, select = autoantibodies_col_num)
+make_aa_lineplot <- function(x, aa_colnames, subgroup_column, subgroup_colors,
+                             line_width = 1.5, geom_point = 2,
+                             plot_theme = autoclust::theme_clustering(text_size = 8, plot_title_size = 18)){
 
-  #data.subset.aa$subgroups <- as.factor(cluster_eval_cal$pam_fit$clustering)
+  # Prepare data for aa line plot
+  long_df <- transform_data_for_line_plot(df = x,
+                                     autoantibody_columns = aa_colnames,
+                                     subgroup_column = subgroup_column)
 
-  data.subset.aa <- data.subset.aa %>%
-    mutate(across(, ~ factor(ifelse(. == "yes", 1, 0), levels = c(0, 1))))
+  long_df[[subgroup_column]] <- as.factor(long_df[[subgroup_column]])
 
-  #Convert binary columns to numeric
-  data.subset.aa <- data.subset.aa %>%
-    mutate(across(,~ as.numeric(as.character(.))))
 
-  data.subset.aa$subgroups <- as.factor(cluster_eval_cal$pam_fit$clustering)
+  frequency_autoantibodies_persubgroup <- ggplot(long_df, aes(x = Autoantibody, y = Frequency,
+                                                              group = !!sym(subgroup_column),
+                                                              color = !!sym(subgroup_column))) +
+    geom_line(linewidth = line_width) +
+    geom_point(size = geom_point) + plot_theme +
+    labs(title = "Antibody frequency by Subgroup", x = "Autoantibody", y = "Percentage of Positivity") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_color_manual(values = subgroup_colors)
 
-  # Group by cluster and count how many individuals have positive values for each autoantobody
-  grouped_sums <- data.subset.aa %>%
-    group_by(subgroups) %>%
-    summarise(across(, sum))
-
-  # Count total number of individuals per group
-  cluster_sizes <- data.subset.aa %>%
-    group_by(subgroups) %>%
-    summarise(cluster_size = n())
-
-  # Divide the sum of 1's by the number of individuals per group and multiply by 100 for percentage
-  cluster_freq <- grouped_sums %>%
-    left_join(cluster_sizes, by = "subgroups") %>%
-    mutate(across(autoantibodies_col_names, ~ . / cluster_size *100))
-
-  # Remove cluster information no longer needed
-  cluster_freq$cluster_size <- NULL
-  # Change format for plotting
-  cluster_freq_long <- melt(cluster_freq, id.vars = "subgroups", variable.name = "Autoantibody", value.name = "Frequency")
-  cluster_freq_long
-
-  frequency_autoantibodies_percluster <- ggplot(cluster_freq_long, aes(x = Autoantibody, y = Frequency, group = subgroups, color = subgroups)) +
-    geom_line(linewidth = 1.5) +
-    geom_point(size = 2) +
-    theme_bw() +
-    labs(title = "Frequency of autoantibody values by Cluster", x = "Autoantibody", y = "Percentage of Positivity") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  frequency_autoantibodies_percluster
+  return(frequency_autoantibodies_persubgroup)
 }
