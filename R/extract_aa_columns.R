@@ -39,7 +39,7 @@
 extract_aa_columns <- function(data_frame, autoantibody_columns,
                                subgroup_column){
   if (is(autoantibody_columns, "character")){
-    antibody_cols <- which(autoantibody_columns %in% colnames(data_frame))
+    antibody_cols <- which(colnames(data_frame) %in% autoantibody_columns)
   } else if(is(autoantibody_columns, "integer")){
     antibody_cols <- autoantibody_columns
   } else {
