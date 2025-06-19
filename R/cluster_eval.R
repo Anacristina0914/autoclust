@@ -26,15 +26,20 @@
 #' @export
 
 cluster_eval <- function(x, ndim = 10, sillplot_dot_size = 6,
-                         save_plot = TRUE, nclust = NA, interactive = FALSE){
+                         save_plot = TRUE, nclust = NA, interactive = FALSE,
+                         boot_runs = 100, seed = 123, compute_consensus = TRUE,
+                         compute_jackard = TRUE, consensus_runs = 100,
+                         plots_suffix = "pam_", plots_dir = getwd()){
   # Plot silhouette if specified by user
   results <- list()
   results$silhouette_plots <- list()  # Silhouette plots per k
 
+  # ---- Silhouette scores -----
   # Calculate silhouette widths for cluster sizes 2 to ndim
   sil_width <- numeric(ndim-1)
-
   pam_fit <- list()
+
+  message("Computing silhouette scores...")
   for (i in 2:ndim) {
     pam_fit[[as.character(i)]] <- pam(x, diss = TRUE, k = i)
     sil_width[i] <- pam_fit[[as.character(i)]]$silinfo$avg.width
@@ -82,7 +87,7 @@ cluster_eval <- function(x, ndim = 10, sillplot_dot_size = 6,
 
   # If save_plots = TRUE save them
   if (save_plot){
-    ggsave(plot = sillplot, filename = sprintf("Sillplot_n%s.jpeg", ndim), path =".")
+    ggsave(plot = sillplot, filename = sprintf("Sillplot_n%s.jpeg", ndim), path = plots_dir)
     }
 
   # Cluster based on best silhouette
@@ -97,11 +102,51 @@ cluster_eval <- function(x, ndim = 10, sillplot_dot_size = 6,
     n_clust <- nclust
   }
 
-  # Run clustering with best number of clusters
-  best_pam_fit <- pam_fit[[as.character(n_clust)]]
+  # ---- Bootstrap stability ----
+  message("Computing bootstrap stability...")
+  if (compute_jackard){
+    # Compute jaccard for all clusters
+    for (i in 2:ndim) {
+      message(sprintf("Computing jaccard index for %s clusters...", i))
+
+      results$bootstrap[[paste0(i, "_clusters")]] <- compute_bootstrap_stability(x = x , nclust = i, B = boot_runs, bootmethod = "boot", seed = seed,
+                                                                                 clustermethod = pamkCBI, usepam = TRUE, diss = TRUE,
+                                                                                 theme = theme_minimal(), save_plot = file.path(save_plot),
+                                                                                 plot_dir = plots_dir, plots_suffix = plots_suffix)
+    }
+  }
+
+  # ---- Consensus Clustering ----
+  if (compute_consensus){
+    message("Computing consensus clustering...")
+
+    consensus_res <- ConsensusClusterPlus(
+      x, maxK = ndim, reps = consensus_runs,
+      pItem = 0.8, # 80% resampling of items
+      pFeature = 1, # Use all the features for clustering
+      clusterAlg = "pam",
+      distance = "none",
+      innerLinkage = "average",
+      seed = seed,
+      plot = "pdf",
+      title = plots_dir,
+    )
+
+    # Calculate cluster-consensus
+    icl <- calcICL(consensus_res, title = plots_dir,
+                   plot = "pdf")
+
+    results$consensus_clustering <- list(
+      result = consensus_res,
+      consensus_calc = icl
+    )
+  }
 
   # Add clustering to results
-  results$pam_fit <- best_pam_fit
+  results$pam_fit <- pam_fit
+
+  # Add best number of clusters
+  results$best_nclust <- n_clust
 
   # Return best pam fit
   return(results)
