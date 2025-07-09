@@ -25,129 +25,168 @@
 #' @importFrom dplyr filter arrange slice_head pull
 #' @export
 
-cluster_eval <- function(x, ndim = 10, sillplot_dot_size = 6,
-                         save_plot = TRUE, nclust = NA, interactive = FALSE,
+cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", data_type = "binary",
+                        sillplot_dot_size = 6, save_plot = TRUE, nclust = NA, interactive = FALSE,
                          boot_runs = 100, seed = 123, compute_consensus = TRUE,
-                         compute_jackard = TRUE, consensus_runs = 100,
-                         plots_suffix = "pam_", plots_dir = getwd()){
-  # Plot silhouette if specified by user
+                         compute_jaccard = TRUE, consensus_runs = 100,
+                         plots_suffix = paste0(distance, "_", clust_method), plots_dir = getwd()){
+
   results <- list()
-  results$silhouette_plots <- list()  # Silhouette plots per k
+  results$silhouette_plots <- list()
 
-  # ---- Silhouette scores -----
-  # Calculate silhouette widths for cluster sizes 2 to ndim
-  sil_width <- numeric(ndim-1)
-  pam_fit <- list()
+  # ---- Distance Calculation ----
+  if (distance == "auto") {
+    if (data_type == "binary") {
+      dist_obj <- daisy(x, metric = "gower", stand = FALSE)
+      diss <- TRUE
+      distance <- "binary"
+    } else {
+      dist_obj <- daisy(x, metric = "euclidean", stand = FALSE)
+      diss <- TRUE
+      distance <- "euclidean"
+    }
+  } else {
+    dist_obj <- daisy(x, metric = distance, stand = FALSE)
+    diss <- TRUE
+  }
 
+  # ---- Clustering Method Wrapper ----
+  cluster_fn <- switch(clust_method,
+                       pam = function(x, k) pam(dist_obj, diss = diss, k = k),
+                       kmeans = function(x, k) kmeans(dist_obj, centers = k),
+                       clara = function(x, k) clara(dist_obj, k = k),
+                       hclust = function(x, k) cutree(hclust(dist_obj, method = "average"), k = k),
+                       stop("Unsupported clustering method") #TODO add other supported cluster methods (density based and )
+  )
+
+
+  # ---- Silhouette Scores ----
+  sil_width <- numeric(ndim - 1)
   message("Computing silhouette scores...")
-  for (i in 2:ndim) {
-    pam_fit[[as.character(i)]] <- pam(x, diss = TRUE, k = i)
-    sil_width[i] <- pam_fit[[as.character(i)]]$silinfo$avg.width
 
-    sil <- silhouette(pam_fit[[as.character(i)]])
-    sil_df <- as.data.frame(sil[, 1:3])  # cluster, neighbor, sil_width
+  for (i in 2:ndim) {
+    fit <- cluster_fn(dist_obj, i)
+    # Save cluster assignments for the different methods
+    cluster_assignment <- if (clust_method == "kmeans") fit$cluster else if (clust_method == "clara") fit$clustering else fit$clustering
+
+    sil <- silhouette(cluster_assignment, dist_obj)
+    sil_width[i] <- mean(sil[, 3])
+
+    sil_df <- as.data.frame(sil[, 1:3])
     sil_df$obs <- 1:nrow(sil_df)
 
-    # Order bars
     sil_df <- sil_df %>%
       arrange(cluster, -sil_width, .by_group = TRUE) %>%
       mutate(order = factor(row_number()))
 
-    # Base ggplot silhouette individual observations
     p <- ggplot(sil_df, aes(y = order, x = sil_width, fill = factor(cluster))) +
       geom_bar(stat = "identity", width = 0.8) +
       scale_fill_carto_d(name = "cluster", palette = "Safe") +
       labs(x = "Silhouette Width", y = "Observation", fill = "Cluster") +
-      ggtitle(paste("Silhouette plot for k =", i)) +
+      ggtitle(paste("Silhouette plot for k =", i, clust_method)) +
       theme_minimal() +
-      theme(axis.text.y = element_blank(),
-            axis.ticks.y = element_blank())
+      theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
 
-    # Make an interactive plot if interactive = TRUE
     if (interactive) {
       p <- ggplotly(p, tooltip = c("x", "fill"))
     }
 
-    # Store the plot in the list
     results$silhouette_plots[[paste0(i, "_clusters")]] <- p
+    results$fit[[as.character(i)]] <- fit
   }
 
-  # Create silhouette plot with ggplot2
-  sil_data <- data.frame(Clusters = factor(1:ndim), Avg_Silhouette_Width = sil_width)
-  sil_data <- sil_data %>% filter(Clusters != 1)
+  sil_data <- data.frame(Clusters = 2:ndim, Avg_Silhouette_Width = sil_width[2:ndim])
 
   sillplot <- ggplot(sil_data, aes(x = Clusters, y = Avg_Silhouette_Width, group = 1)) +
     geom_line() +
     geom_point(colour = "#870052", size = sillplot_dot_size) +
     labs(x = "Number of clusters", y = "Average Silhouette Width") +
+    geom_hline(yintercept = c(0.25, 0.5, 0.7), linetype = "dashed", color = c("#CC0000", "#FFCC33", "#669933")) +
     theme_linedraw()
 
-  # Add silhouette plot to the list
   results$silhouette_plots$avg_silhouette_plot <- sillplot
 
-  # If save_plots = TRUE save them
-  if (save_plot){
-    ggsave(plot = sillplot, filename = sprintf("Sillplot_n%s.jpeg", ndim), path = plots_dir)
+  if (save_plot) {
+    if (!dir.exists(file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))) {
+      dir.create(file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))
     }
 
-  # Cluster based on best silhouette
-  if (is.na(nclust)){
-    # Cluster using number of clusters corresponding to max silhouette
+    ggsave(plot = sillplot, filename = sprintf("sillplot_n%s_%s.jpeg", ndim, plots_suffix), path = file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))
+  }
+
+
+  # ---- Determine Optimal k ----
+  if (is.na(nclust)) {
     n_clust <- sil_data %>%
       arrange(desc(Avg_Silhouette_Width)) %>%
       slice_head(n = 1) %>%
-      pull(Clusters) %>%
-      as.numeric()
+      pull(Clusters)
   } else {
     n_clust <- nclust
   }
 
-  # ---- Bootstrap stability ----
-  message("Computing bootstrap stability...")
-  if (compute_jackard){
-    # Compute jaccard for all clusters
+  # ---- Bootstrap Stability (Optional) ----
+  if (compute_jaccard) {
+    cluster_fn_jaccard <- switch(clust_method,
+                         pam = pamkCBI,
+                         kmeans = kmeansCBI,
+                         clara = claraCBI,
+                         hclust = hclustCBI,
+                         stop("Unsupported clustering method") #TODO add other supported cluster methods (density based and )
+    )
+    message("Computing bootstrap stability...")
+    results$bootstrap <- list()
+
     for (i in 2:ndim) {
       message(sprintf("Computing jaccard index for %s clusters...", i))
 
-      results$bootstrap[[paste0(i, "_clusters")]] <- compute_bootstrap_stability(x = x , nclust = i, B = boot_runs, bootmethod = "boot", seed = seed,
-                                                                                 clustermethod = pamkCBI, usepam = TRUE, diss = TRUE,
-                                                                                 theme = theme_minimal(), save_plot = file.path(save_plot),
-                                                                                 plot_dir = plots_dir, plots_suffix = plots_suffix)
+      results$bootstrap[[paste0(i, "_clusters")]] <- compute_bootstrap_stability(
+        x = dist_obj, nclust = i, B = boot_runs, bootmethod = "boot", seed = seed,
+        clustermethod = cluster_fn_jaccard, diss = diss,
+        theme = theme_minimal(), save_plot = save_plot,
+        plot_dir = file.path(plots_dir), plots_suffix = plots_suffix
+      )
     }
   }
 
   # ---- Consensus Clustering ----
-  if (compute_consensus){
+  if (compute_consensus) {
     message("Computing consensus clustering...")
+    if (!clust_method %in% c("pam", "kmeans", "hc")) {
+      stop("Method must be set to pam, kmeans or hc")
+    }
+
+    # Return the right name for the clustering algorithm
+    clust_method_consensus_clust <- switch(clust_method,
+                                 pam = "pam",
+                                 kmeans = "km",
+                                 hclust = "hc",
+                                 stop("Unsupported clustering method for Consensus Cluster Plus") #TODO add other supported cluster methods (density based and )
+    )
+
+
+    if (!dir.exists(file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)))) {
+        dir.create(file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)))
+      }
 
     consensus_res <- ConsensusClusterPlus(
-      x, maxK = ndim, reps = consensus_runs,
-      pItem = 0.8, # 80% resampling of items
-      pFeature = 1, # Use all the features for clustering
-      clusterAlg = "pam",
-      distance = "none",
-      innerLinkage = "average",
-      seed = seed,
-      plot = "pdf",
-      title = plots_dir,
+      d = as.matrix(t(x)), maxK = ndim, reps = consensus_runs,
+      pItem = 0.8, pFeature = 1, clusterAlg = clust_method_consensus_clust,
+      distance = distance, innerLinkage = "average",
+      seed = seed, plot = "pdf", title = file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix))
     )
 
-    # Calculate cluster-consensus
-    icl <- calcICL(consensus_res, title = plots_dir,
-                   plot = "pdf")
+    icl <- calcICL(consensus_res, title = file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)), plot = "pdf")
 
-    results$consensus_clustering <- list(
-      result = consensus_res,
-      consensus_calc = icl
-    )
+    results$consensus_clustering <- list(result = consensus_res, consensus_calc = icl)
   }
 
-  # Add clustering to results
-  results$pam_fit <- pam_fit
-
-  # Add best number of clusters
   results$best_nclust <- n_clust
-
-  # Return best pam fit
+  results$method <- clust_method
+  if (save_plot) {
+    message(sprintf("Plots saved to %s", paste0(plots_dir, "/clust_eval_results/")))
+  }
+  message("Completed..Hej då!")
   return(results)
 }
+
