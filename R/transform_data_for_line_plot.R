@@ -51,33 +51,33 @@ transform_data_for_line_plot <- function(df, autoantibody_columns,
   # Extract data, aa_colnames and subgroup_colname
   aa_data <- aa_result_list[[1]]
   aa_columns <- aa_result_list[[2]]
-  subgroup_column <- aa_result_list[[3]]
+  subgroup_column_number <- aa_result_list[[3]]
 
-  subroup_column_name <- colnames(aa_data)[subgroup_column]
+  subgroup_column_name <- colnames(df)[subgroup_column_number]
 
   #Convert binary columns to numeric
   aa_data <- aa_data %>%
-    mutate(across(all_of(colnames(aa_data)[aa_columns]), ~ as.numeric(as.character(.))))
+    mutate(across(all_of(colnames(aa_data)[1:length(colnames(aa_data))-1]), ~ as.numeric(as.character(.))))
 
   # Groupped sums per subgroup
   grouped_sums <- aa_data %>%
-    group_by(.data[[subroup_column_name]]) %>%
+    group_by(.data[[subgroup_column_name]]) %>%
     summarise(across(, sum))
 
   # Group sizes
   group_sizes <- aa_data %>%
-    group_by(.data[[subroup_column_name]]) %>%
+    group_by(.data[[subgroup_column_name]]) %>%
     summarise(group_size = n())
 
   # Divide the sum of 1's by the number of individuals per group and multiply by 100 for percentage
   group_freq <- grouped_sums %>%
-    left_join(group_sizes, by = subroup_column_name) %>%
-    mutate(across(all_of(colnames(aa_data)[aa_columns]), ~ . / group_size *100))
+    left_join(group_sizes, by = subgroup_column_name) %>%
+    mutate(across(all_of(colnames(aa_data)[1:length(colnames(aa_data))-1]), ~ . / group_size *100))
 
   # Remove cluster information no longer needed
   group_freq$group_size <- NULL
   # Change format for plotting
-  freq_long <- melt(group_freq, id.vars = subroup_column_name,
+  freq_long <- melt(group_freq, id.vars = subgroup_column_name,
                     variable.name = "Autoantibody",
                     value.name = "Frequency")
   return(freq_long)
