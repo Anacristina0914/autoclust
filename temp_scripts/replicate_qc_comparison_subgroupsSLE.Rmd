@@ -34,25 +34,22 @@ devtools::load_all("/home/anagon@ad.cmm.se/Documents/packages/autoclust/") # Loa
 
 ## Read data
 
-Define directory where data is.
-
+Define directory where data is and output directories.
 ```{r dirs}
 final_data_dir = "/run/user/1309843199/gvfs/smb-share:server=storage.ad.cmm.se,share=tank/users/anagon/Projects/SLE-subgroups/MS proteomic data Merck/Download 2024 02 22/Final Source Files/"
 quant_data = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "Quant. Data")
 gene_metadata = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "gene_metadata")
 sample_metadata = read_excel(paste0(final_data_dir, "XCESHI1-150_TMT16_HiRIEF_results_modAG311024.xlsx"), sheet = "sample_metadata")
-
-#output_results_path = "/run/user/1309843199/gvfs/smb-share:server=storage.ad.cmm.se,share=tank/users/anagon/Projects/SLE-subgroups/MS proteomic data Merck/Re-analysis_ACGS"
 output_results_path <- "/home/anagon@ad.cmm.se/Documents/conferece_posters/Toronto_SLE25/poster_images/"
 ```
-
+## Data pre-processing
 Filter quantitative data to not include only SLE (which includes controls) and the internal standards. Then plot the values of TMT per group.
-```{r select_sle}
+```{r filter_data}
 # Retrieve metadata and identifiers for SLE patients in cluster
 sle_ids = sample_metadata %>% 
   filter(skujdom == "SLE" &
-           #cluster != "ctrl" &
            cluster != "is")
+
 # How many samples per cluster
 table(sle_ids$cluster)
 
@@ -86,9 +83,8 @@ proteins_in_exp_df <- gene_metadata %>% filter(`Protein ID` %in% colnames(t_quan
 # How many samples (rows) and how many proteins (columns) do we have?
 dim(t_quant_data_sle)
 ```
-
 Make Single Cell Experiment object containing metadata and intensities.
-```{r}
+```{r make_single_cell_experiment}
 # Gene metadata with only selected proteins
 filt_nonvariable_gene_metadata <- gene_metadata %>% 
      filter(!str_detect(`Gene Name`, "IG[HLK]V"))
@@ -109,7 +105,7 @@ se_object_MS <- SummarizedExperiment(
 #saveRDS(object = se_object_MS, file = file.path("/home/anagon@ad.cmm.se/Documents/projects/SLE_metabolomics/data", "SummarizedExperiment_LupusMS_SLECTRL_filtvariablechain.RDS"))
 ```
 
-Reshape data
+Reshape data.
 ```{r reshape}
 # Log2 transform the intensity data
 log2_tmt_data <- assay(se_object_MS, "TMT_ratios")
@@ -182,7 +178,7 @@ data_dist_filt = ggplot(filt_long_data, aes(x = channel, y = log2_Intensity, fil
   facet_wrap(~ set, nrow = 2)
 data_dist_filt
 
-
+# Save plot
 #ggsave(filename = "log2intesity_dist_byset.jpeg", plot = data_dist, path = paste0(output_results_path, "/figs"),
 #       width = 18, height = 10)
 ```
@@ -209,7 +205,6 @@ missing_by_protein_filt <- filt_long_data %>%
 # Add protein names to missing_by_protein dataset
 missing_by_protein_annot = merge(missing_by_protein, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
   arrange(desc(percentage_samples_missing))
-
 
 missing_by_protein_filt_annot = merge(missing_by_protein_filt, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
   arrange(desc(percentage_samples_missing))
@@ -277,7 +272,6 @@ missing_by_protein_cluster <- long_data %>%
 
 missing_by_protein_cluster_annot = merge(missing_by_protein_cluster, gene_metadata %>% select(`Protein ID`, `Gene Name`, `Description`), by = "Protein ID") %>%
   arrange(desc(percentage_missing))
-
 
 # Identify proteins with significant differential missingness
 results1_2 <- missing_by_cluster %>%
@@ -400,7 +394,7 @@ results_set <- missing_by_set %>%
 ```
 
 All against all comparison
-```{r}
+```{r pariwise_comparisons}
 # Create a table of missing values by protein and cluster
 missing_by_group <- long_data %>%
   mutate(missing = is.na(log2_Intensity)) %>%
@@ -416,11 +410,9 @@ missing_matrix <- missing_by_group %>%
 # Perform a Chi-squared test
 chi_test <- chisq.test(missing_matrix)
 print(chi_test)
-
 ```
 
-
-# Impute data
+## Data imputation
 Impute missing values by replacing the NA values with the minimun observed.
 ```{r}
 # Calculate the overall minimum log2_Intensity value, excluding NA
@@ -428,7 +420,6 @@ Impute missing values by replacing the NA values with the minimun observed.
 overall_min <- min(filt_long_data$log2_Intensity, na.rm = TRUE) - 1
 
 # Impute missing values within each ProteinID group
-
 imputed_data <- long_data %>%
   group_by(ProteinID) %>%
     #filter(!all(is.na(log2_Intensity))) %>%  
@@ -482,23 +473,10 @@ data_dist = ggplot(filt_imputed_data, aes(x = channel, y = log2_Intensity, fill 
   facet_wrap(~ set, nrow = 2)
 data_dist
 
-
+# Save plots
 #ggsave(filename = "log2intesity_dist_byset_imputed.jpeg", plot = data_dist, path = paste0(output_results_path, "/figs"),
 #       width = 18, height = 10)
 ```
-
-```{r}
-# % missing per protein
-filt_long_data %>%
-  group_by(ProteinID) %>%
-  summarise(pct_missing = mean(is.na(log2_Intensity))) %>%
-  ggplot(aes(x = pct_missing)) +
-  geom_histogram(bins = 30, fill = "steelblue") +
-  labs(title = "Missingness per Protein", x = "% Missing", y = "Count")
-
-```
-
-#TODO Try different imputation methods
 
 Prepare data for limma
 ```{r limma_preprocess}
@@ -526,8 +504,8 @@ all(sle_ids_ordered$Sample == colnames(expression_matrix))
 all(sle_ids_ordered$Sample == colnames(filt_expression_matrix))  
 ```
 
-
-```{r}
+Run analysis with Limma.
+```{r fit_limma}
 # Fit the model
 fit <- lmFit(expression_matrix, design)
 filt_fit <- lmFit(filt_expression_matrix, design)
@@ -556,7 +534,6 @@ results <- list(
   Cluster4_vs_ctrl = topTable(fit2, coef = "Cluster4_vs_ctrl", adjust = "BH", number = Inf)
 )
 
-
 results_filt <- list(
   Cluster1_vs_ctrl = topTable(filt_fit2, coef = "Cluster1_vs_ctrl", adjust = "BH", number = Inf),
   Cluster2_vs_ctrl = topTable(filt_fit2, coef = "Cluster2_vs_ctrl", adjust = "BH", number = Inf),
@@ -565,13 +542,10 @@ results_filt <- list(
 )
 
 View(results_filt$Cluster1_vs_ctrl)
-
-
 ```
 
-
-Plot results
-```{r}
+Plot limma results
+```{r limma_plots}
 # Define significance thresholds
 logFC_threshold <- 1
 pval_threshold <- 0.05
@@ -627,8 +601,6 @@ filt_volcano_plots <- lapply(names(results_filt), function(cluster) {
 
 filt_volcano_plots
 
-
-
 gene_metadata$protnum <- rownames(gene_metadata)
 
 # Annotate results with protein numbers
@@ -674,20 +646,24 @@ filt_volcano_plots <- lapply(names(results_annot_filt), function(cluster) {
 
 filt_volcano_plots
 ```
+
+## Plot significant proteins (START HERE)
 Plot some of the significant proteins
 ```{r plot_protein_expr}
 protein <- "ITGB4"
+
+# Search for protein ID
 prot_id <- gene_metadata %>% 
   filter(`Gene Name` == protein) %>%
   pull(`Protein ID`)
 
-prot_id <- "ENSP00000504676.1"
-
+# Alternatively define ID directly.
+#prot_id <- "ENSP00000504676.1"
 
 plot_data <- filt_imputed_data %>%
   filter(ProteinID == prot_id, cluster %in% c("ctrl", "1"))
 
-
+# Plot protein abundance using violin plots
 ggplot(plot_data, aes(x = cluster, y = log2_Intensity, fill = cluster)) +
   geom_violin(trim = FALSE, alpha = 0.5) +
   geom_boxplot(width = 0.2, outlier.shape = NA) +
@@ -702,12 +678,10 @@ ggplot(plot_data, aes(x = cluster, y = log2_Intensity, fill = cluster)) +
 
 
 results_annot$Cluster1_vs_ctrl %>% filter(`Gene Name` == "ITGB4")
-
-
 ```
 
 Volcano plots
-```{r}
+```{r volcanos}
 # Define the clusters in your data
 clusters <- c("1", "2", "3", "4")
 
@@ -753,8 +727,6 @@ for (i in 1:(length(clusters) - 1)) {
   }
 }
 
-
-
 # Extract protein annotations
 significant_proteins <- lapply(pairwise_results, function(x) {
   # Get the rownames of significant proteins, removing NA values
@@ -775,11 +747,6 @@ protein_metadata$prot_number <- row_number(filt_nonvariable_gene_metadata)
 pairwise_results_protnumber <- lapply(pairwise_results, function(x) x %>% mutate(prot_number = as.numeric(rownames(x))))
 # Add protein names to results
 pairwise_results_protnumber_wprotnames <- lapply(pairwise_results_protnumber, function(x) y = inner_join(x, protein_metadata, by = "prot_number"))
-```
-
-Run enrichr analysis
-```{r}
-
 ```
 
 Volcano plots
@@ -838,12 +805,13 @@ for (comparison in names(pairwise_results)) {
     segment.color = "grey50"
   )
 
-# Print the plot
+# Save the plot
  # ggsave(filename = paste0(comparison, ".jpeg"), plot = volcano_plot, path = output_results_path)
 print(volcano_plot)
 }
 volcano_plot
 ```
+
 Color all points
 ```{r moderateFC, fig.height=5.5, fig.width=8}
 # Define the significance thresholds
@@ -932,8 +900,8 @@ for (comparison in names(pairwise_results)) {
   print(volcano_plot)
 }
 ```
-merged results 
-```{r}
+merged results (log2FC > 1, log2FC < 1, pval > 0.5 and pval < 0.5.
+```{r volcanos_annotated_allsignif}
 sig_pval <- 0.05
 results_list <- Map(function(pairwise_results, name){
   pairwise_results$rownum <- rownames(pairwise_results)
@@ -949,7 +917,6 @@ results_list <- Map(function(pairwise_results, name){
 significant_results_all <- bind_rows(results_list)
 significant_results_all
 ```
-
 
 Extract names of significant proteins
 ```{r significant_heatmap}
@@ -1013,17 +980,11 @@ ComplexHeatmap::Heatmap(
   cluster_column_slices = FALSE,
   show_column_dend = FALSE,
   row_names_gp = gpar(fontsize = 7),
-  #column_split = 
-  #column_km = 4
+  #column_km = 4 # user knn to cluster columns
 )
-
-
-
-
 ```
 
-
-
+# Distribution plots for varios proteins.
 ```{r extract_values_forsig_proteins}
 significant_proteins
 
@@ -1088,7 +1049,7 @@ c4b_exp <- C4B.1_exp %>%
     y = "Subgroup"
   )
 c4b_exp
-ggsave(filename = "c4b_log2_intensities_persubgroup.jpeg", plot = c4b_exp, path = output_path, height = 5, width = 6)
+#ggsave(filename = "c4b_log2_intensities_persubgroup.jpeg", plot = c4b_exp, path = output_path, height = 5, width = 6)
 
 ighg3_exp <- IGHG3_exp %>%
   ggplot(aes(x = log2_Intensity, y = subgroup)) +
@@ -1131,7 +1092,7 @@ ighg3_exp <- IGHG3_exp %>%
     y = "Subgroup"
   )
 
-ggsave(filename = "ighg3_log2_intensities_persubgroup.jpeg", plot = ighg3_exp, path = output_path, height = 5, width = 6)
+#ggsave(filename = "ighg3_log2_intensities_persubgroup.jpeg", plot = ighg3_exp, path = output_path, height = 5, width = 6)
 
 
 C4B.2_exp %>%
@@ -1164,8 +1125,6 @@ C4B.2_exp %>%
     x = "Log2 Intensity",
     y = "Subgroup"
   )
-
-
 ```
 
 
@@ -1182,8 +1141,9 @@ clust23_both_prots <- pairwise_results_protnumber$Cluster2_vs_Cluster3 %>% filte
 clust24_both_prots <- pairwise_results_protnumber$Cluster2_vs_Cluster4 %>% filter(prot_number %in% sign_proteins_numbers)
 clust34_both_prots <- pairwise_results_protnumber$Cluster3_vs_Cluster4 %>% filter(prot_number %in% sign_proteins_numbers)
 ```
+
 inspect results for comparisons
-```{r}
+```{r inspect_pairwise}
 fc_th = 1
 sb1_sb2_fcfilt <- pairwise_results_protnumber_wprotnames$Cluster1_vs_Cluster2 %>% 
   filter(abs(logFC) > fc_th) %>% 
@@ -1235,11 +1195,9 @@ gene_names <- heatmap_data %>%
   pull(Gene.Name)
 
 rownames(heatmap_matrix) <- gene_names
-
 ```
+
 ```{r, fig.height=5, fig.width=5}
-
-
 # Define a color palette for subgroups/samples
 sample_colors <- c("ctrl" = "#7f7f7f", "1" = "#3d7196", "2" = "#cf823e", 
                    "3" = "#438943", "4" = "#b34b4c")
@@ -1280,5 +1238,4 @@ pheatmap(heatmap_matrix,
          border_color = "gray",  
          color = colorRampPalette(c("blue", "gray", "red"))(100),  # Higher contrast
          main = "Protein Expression Heatmap")
-
 ```
