@@ -2,7 +2,7 @@
 % Please edit documentation in R/compute_dissimilarity_matrix.R
 \name{compute_dissimilarity_matrix}
 \alias{compute_dissimilarity_matrix}
-\title{Compute dissimilarity matrices}
+\title{Compute and Visualize a Dissimilarity Matrix}
 \usage{
 compute_dissimilarity_matrix(
   x,
@@ -18,38 +18,34 @@ compute_dissimilarity_matrix(
 )
 }
 \arguments{
-\item{x}{numeric matrix or data frame (n x p). Dissimilarities are computed between the rows of x. Dataframe must contain headers.
-For further details, see help(daisy).}
+\item{x}{A data matrix or data frame.}
 
-\item{metric}{Metric to be used to compute matrix. Possible options include "gower" (default), "euclidean", or "manhattan".}
+\item{metric}{Character. Dissimilarity metric to use: \code{"euclidean"}, \code{"manhattan"}, or \code{"gower"}.}
 
-\item{stand}{if TRUE, measurements in x are standardized before calculating dissimilarities. For further details, see help(daisy).}
+\item{stand}{Logical. Whether to standardize variables (used for non-Gower metrics).}
 
-\item{return_dis}{if TRUE function returns dissimilarity object rather than matrix.}
+\item{return_dis}{Logical. If \code{TRUE}, returns the dissimilarity object; else returns a matrix.}
 
-\item{plot_dissim}{if TRUE, plots the dissimilarity matrix as a heatmap and shows hierarchical clustering on the plot.}
+\item{plot_dissim}{Logical. Whether to generate a dissimilarity heatmap.}
 
-\item{heatmap_title}{Title for the heatmap plot.}
+\item{heatmap_title}{Character. Title of the heatmap plot.}
 
-\item{heatmap_axis_text_size}{Heatmap x-y axis text size.}
+\item{heatmap_axis_text_size}{Numeric. Axis text size for the heatmap.}
 
-\item{plot_title_size}{Font size for the plot title.}
+\item{plot_title_size}{Numeric. Plot title font size.}
 
-\item{save_plots}{If TRUE plots produced are saved in the working directory.}
+\item{save_plots}{Logical. If \code{TRUE}, saves the heatmap.}
 
-\item{plot_outpath}{Output pathway for plots. If not specified and save_plots is TRUE they are saved in the current directory.}
+\item{plot_outpath}{Character. Directory where the plot is saved.}
 }
 \value{
-A list containing the dissimilarity matrix, optionally the heatmap plot if specified.
+A list containing:
+\describe{
+\item{dissimilarity_matrix}{Either a dissimilarity object or a matrix, depending on \code{return_dis}.}
+\item{heatmap_plot}{(Optional) ggplot2 heatmap plot of the dissimilarity matrix.}
+}
 }
 \description{
-Wrapper function (daisy) for computing dissimilarity matrices from matrix or datasets of continuous, discrete, or categorical variables.
-The function also creates a heatmap using the dissimilarity matrix if specified.
-}
-\examples{
-# Example of how to use the function
-result <- compute_dissimilarity_matrix(x = autoant_dataset, metric = "gower")
-result$dissimilarity_matrix  # Access the matrix
-result$heatmap_plot  # Access the plot (if plot_dissim = TRUE)
-
+Computes a dissimilarity matrix using the \code{\link[cluster]{daisy}} function and
+optionally visualizes it using a heatmap.
 }

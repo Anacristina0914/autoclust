@@ -2,39 +2,85 @@
 % Please edit documentation in R/cluster_eval.R
 \name{cluster_eval}
 \alias{cluster_eval}
-\title{Evaluate Clustering with Silhouette Scores}
+\title{Evaluate Clustering Performance Using Mixed Data}
 \usage{
 cluster_eval(
   x,
   ndim = 10,
+  clust_method = "pam",
+  distance = "auto",
+  data_type = "binary",
   sillplot_dot_size = 6,
   save_plot = TRUE,
-  nclust = NA
+  nclust = NA,
+  interactive = FALSE,
+  boot_runs = 100,
+  seed = 123,
+  compute_consensus = TRUE,
+  compute_jaccard = TRUE,
+  consensus_runs = 100,
+  plots_suffix = paste0(distance, "_", clust_method),
+  plots_dir = getwd()
 )
 }
 \arguments{
-\item{x}{A dissimilarity object of class dissimilarity.}
+\item{x}{A data frame or matrix of observations (rows = samples, columns = features). Can include binary or continuous variables.}
 
-\item{ndim}{Integer. The maximum number of clusters to consider for silhouette analysis. Default is 10.}
+\item{ndim}{Integer. Maximum number of clusters to evaluate (default = 10).}
 
-\item{sillplot_dot_size}{Numeric. The size of the points in the silhouette plot. Default is 6.}
+\item{clust_method}{Clustering method to use. Options are \code{"pam"}, \code{"kmeans"}, \code{"clara"}, or \code{"hclust"}.}
 
-\item{save_plot}{Logical. If TRUE, saves the silhouette plot as a JPEG file. Default is TRUE.}
+\item{distance}{Distance metric to use. \code{"auto"} (default) uses \code{"gower"} for binary data and \code{"euclidean"} for continuous.
+Other options can be passed to \code{cluster::daisy()}, e.g., \code{"manhattan"}, \code{"gower"}, \code{"euclidean"}.}
 
-\item{nclust}{Optional. An integer specifying the desired number of clusters. If not provided, the function uses the number of clusters with the highest silhouette width.}
+\item{data_type}{Type of data: \code{"binary"} or \code{"continuous"}. Used only when \code{distance = "auto"}.}
+
+\item{sillplot_dot_size}{Size of dots in silhouette width plot (default = 6).}
+
+\item{save_plot}{Logical. Save plots to disk? (default = \code{TRUE}).}
+
+\item{nclust}{Optional. Number of clusters to use for evaluation. If \code{NA}, selects best k based on silhouette score (default = \code{NA}).}
+
+\item{interactive}{Logical. If \code{TRUE}, returns interactive silhouette plots using \code{plotly} (default = \code{FALSE}).}
+
+\item{boot_runs}{Integer. Number of bootstrap resamples for Jaccard stability index (default = 100).}
+
+\item{seed}{Random seed for reproducibility (default = 123).}
+
+\item{compute_consensus}{Logical. If \code{TRUE}, performs consensus clustering (default = \code{TRUE}).}
+
+\item{compute_jaccard}{Logical. If \code{TRUE}, computes bootstrap-based Jaccard index for cluster stability (default = \code{TRUE}).}
+
+\item{consensus_runs}{Integer. Number of resamples for consensus clustering (default = 100).}
+
+\item{plots_suffix}{Character string added to filenames when saving plots (default = \code{paste0(distance, "_", clust_method)}).}
+
+\item{plots_dir}{Directory where plots are saved (default = current working directory).}
 }
 \value{
-A list containing:
-\item{silhouette_plot}{A ggplot2 object for the silhouette plot.}
-\item{pam_fit}{The best PAM clustering model based on the optimal number of clusters determined by silhouette width.}
+A list with the following elements:
+\describe{
+\item{silhouette_plots}{A list of silhouette plots for each evaluated number of clusters, and a summary plot.}
+\item{fit}{Fitted clustering objects for each k.}
+\item{bootstrap}{Bootstrap cluster stability results for each k (if \code{compute_jaccard = TRUE}).}
+\item{consensus_clustering}{ConsensusClusterPlus results and ICL scores (if \code{compute_consensus = TRUE}).}
+\item{best_nclust}{The optimal number of clusters based on average silhouette width.}
+\item{method}{The clustering method used.}
+}
 }
 \description{
-This function performs clustering evaluation by calculating silhouette widths for a specified range of cluster numbers and selecting the optimal cluster number based on the highest average silhouette width. The function can also plot silhouette widths and save the plot.
+Performs comprehensive evaluation of clustering performance using silhouette scores, consensus clustering, and bootstrap stability.
+Supports both continuous and binary data and multiple clustering algorithms.
+}
+\details{
+This function streamlines the evaluation of clustering strategies on binary or continuous datasets using silhouette scores,
+consensus clustering, and cluster stability (via bootstrapped Jaccard index). Useful for benchmarking clustering algorithms and selecting optimal k.
 }
 \examples{
-# Example usage with a dissimilarity matrix `diss_matrix`
-results <- cluster_eval(x = diss_matrix, ndim = 10)
-results$silhouette_plot  # Access the silhouette plot
-results$pam_fit  # Access the best PAM clustering model
-
+\dontrun{
+data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3, n_continuous = 4, n_binary = 4)
+x <- data[, -ncol(data)]  # remove true cluster labels
+result <- cluster_eval(x, data_type = "binary", clust_method = "pam", distance = "gower")
+result$best_nclust
+}
 }

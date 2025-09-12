@@ -4,40 +4,19 @@
 \alias{ki_colors}
 \title{Retrieves KI Colors}
 \usage{
-ki_colors(
-  sg1_var_name = "1",
-  sg2_var_name = "2",
-  sg3_var_name = "3",
-  sg4_var_name = "4",
-  fem_var_name = "Female",
-  mas_var_name = "Male",
-  case_var_name = "case",
-  control_var_name = "control"
-)
+ki_colors(color_palette = "primary", palette_for_printing = FALSE)
 }
 \arguments{
-\item{sg1_var_name}{Name for subgroup 1 (default: \code{"1"})}
+\item{color_palette}{Color palette names can be set to primary or functional (default: \code{"primary"})}
 
-\item{sg2_var_name}{Name for subgroup 2 (default: \code{"2"})}
-
-\item{sg3_var_name}{Name for subgroup 3 (default: \code{"3"})}
-
-\item{sg4_var_name}{Name for subgroup 4 (default: \code{"4"})}
-
-\item{fem_var_name}{Name for Female (default: \code{"Female"})}
-
-\item{mas_var_name}{Name for Male (default: \code{"Male"})}
-
-\item{case_var_name}{Name for Cases (default: \code{"case"})}
-
-\item{control_var_name}{Name for Controls (default: \code{"control"})}
+\item{print_palette}{To display color for printing or web designs (default: \code{"FALSE"})}
 }
 \value{
 A named vector of hex color codes.
 }
 \description{
-Returns a named vector of colors associated with subgroups, sex, and case-control status.
+Returns a named vector of Karolinska Institutet's palette.
 }
 \examples{
-subgroup_colors = acr_subgroups_paper_colors()
+ki_colors = ki_colors(color_palette = "primary", palette_for_printing = FALSE)
 }
