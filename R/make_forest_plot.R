@@ -10,29 +10,47 @@ make_forest_plot <- function(results_df, clinical_manifestation, outcome_var_col
     adjust_vars <- trimws(adjust_vars)
   }
 
+  # Remove intercepts and adjusted variables
+  message(sprintf("Adjusted variables to be removed: %s", adjust_vars))
+  results_df <- results_df %>%
+    filter(predictor != "(Intercept)") %>%
+    filter(!str_detect(predictor, paste(adjust_vars, collapse = "|")))
+
+  print(head(results_df))
 
   if (filter_sig_OR){
-    print("Adjusted variables to be removed:")
-    print(adjust_vars)
+    message("Filtering ORs...")
     results_df <- results_df %>%
-      filter(`2.5 %` < 1 & `97.5 %` < 1 | `2.5 %` > 1 & `97.5 %` > 1) %>%
-      filter(predictor != "(Intercept)") %>%
-      filter(!str_detect(predictor, paste(adjust_vars, collapse = "|")))
+      filter(`2.5 %` < 1 & `97.5 %` < 1 | `2.5 %` > 1 & `97.5 %` > 1) #%>%
+      #filter(predictor != "(Intercept)") %>%
+      #filter(!str_detect(predictor, paste(adjust_vars, collapse = "|")))
+
+    # Add another step to skip plotting if no significant results are present
+    if (dim(results_df)[1] == 0){
+      stop(message("No significant results were found, try setting filter_sig_OR to FALSE to plot results"))
+    }
   }
 
 
   if (!is.null(ntop)){
     # Select top results
-    top_results <- results_df[0:ntop, ] %>%
+    message(sprintf("Selecting first %s terms to plot...", ntop))
+    if (dim(results_df)[1] < ntop ) {
+      message(sprintf("Not enough ntop results exist, using ntop = %s instead", dim(results_df)[1]))
+      ntop = dim(results_df)[1]
+    }
+
+    top_results <- results_df[1:ntop, ] %>%
       arrange(-OR)
   } else {
-    top_results <- results_df
+    top_results <- results_df %>%
+      arrange(-OR)
   }
 
   if (adjust_p){
     pvalue_var_name <- "adj_p"
   } else {
-    p_value_var_name <- "Pr>|z|"
+    pvalue_var_name <- "Pr>|z|"
   }
 
   # Categorize results

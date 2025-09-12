@@ -107,7 +107,6 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
     if (!"Pr>|z|" %in% colnames(results_df)) {
       stop("Column 'Pr>|z|' not found in results_df; cannot adjust p-values.")
     }
-    #results_df$`Pr>|z|` <- p.adjust(results_df$`Pr>|z|`, method = p_adj_method)
     results_df$adj_p <- p.adjust(results_df$`Pr>|z|`, method = p_adj_method)
     results_df$adj_p_method <- p_adj_method
   }
@@ -122,6 +121,8 @@ run_associations <- function(clinical_data_df, clinical_data_cols, outcome_var_c
 
   if (plot){
     message("Making forest plot...")
+
+
     forest <- make_forest_plot(results_df = results_df, ntop = ntop, clinical_manifestation = clinical_manifestation,
                      outcome_var_colname = outcome_var_colname, pt.size = pt.size, y.axis.text.size = y.axis.text.size,
                      x.axis.text.size = x.axis.text.size, name_mapping = name_mapping, adjust_vars = adjustment_vars,

@@ -33,7 +33,7 @@
 #' @importFrom ggplot2 theme_bw theme element_text
 #' @export
 
-theme_clustering <- function(text_family = "Roboto", text_size = 8, text_color = "black",
+theme_clustering <- function(text_family = "sans", text_size = 8, text_color = "black",
                              plot_title_family = "Lobster Two", plot_title_size = 20,
                              plot_title_face = "bold", plot_title_color ="#2a475e",
                              axis_title_size = 12, axis_text_size = 10, axis_text_color = "black",

@@ -1,2 +1,4 @@
 ^autoclust\.Rproj$
 ^\.Rproj\.user$
+^doc$
+^Meta$

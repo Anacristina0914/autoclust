@@ -1,54 +1,103 @@
 
-#' Evaluate Clustering with Silhouette Scores
+#' Evaluate Clustering Performance Using Mixed Data
 #'
-#' This function performs clustering evaluation by calculating silhouette widths for a specified range of cluster numbers and selecting the optimal cluster number based on the highest average silhouette width. The function can also plot silhouette widths and save the plot.
+#' Performs comprehensive evaluation of clustering performance using silhouette scores, consensus clustering, and bootstrap stability.
+#' Supports both continuous and binary data and multiple clustering algorithms.
 #'
-#' @param x A dissimilarity object of class dissimilarity.
-#' @param ndim Integer. The maximum number of clusters to consider for silhouette analysis. Default is 10.
-#' @param sillplot_dot_size Numeric. The size of the points in the silhouette plot. Default is 6.
-#' @param save_plot Logical. If TRUE, saves the silhouette plot as a JPEG file. Default is TRUE.
-#' @param nclust Optional. An integer specifying the desired number of clusters. If not provided, the function uses the number of clusters with the highest silhouette width.
-#' @param interactive Logical. If TRUE, the results return interactive silhouette plots for each number of clusters given by ndim.
+#' @param x A data frame or matrix of observations (rows = samples, columns = features). Can include binary or continuous variables.
+#' @param ndim Integer. Maximum number of clusters to evaluate (default = 10).
+#' @param clust_method Clustering method to use. Options are `"pam"`, `"kmeans"`, `"clara"`, or `"hclust"`.
+#' @param distance Distance metric to use. `"auto"` (default) uses `"gower"` for binary data and `"euclidean"` for continuous.
+#'        Other options can be passed to `cluster::daisy()`, e.g., `"manhattan"`, `"gower"`, `"euclidean"`.
+#' @param data_type Type of data: `"binary"` or `"continuous"`. Used only when `distance = "auto"`.
+#' @param sillplot_dot_size Size of dots in silhouette width plot (default = 6).
+#' @param save_plot Logical. Save plots to disk? (default = `TRUE`).
+#' @param nclust Optional. Number of clusters to use for evaluation. If `NA`, selects best k based on silhouette score (default = `NA`).
+#' @param interactive Logical. If `TRUE`, returns interactive silhouette plots using `plotly` (default = `FALSE`).
+#' @param boot_runs Integer. Number of bootstrap resamples for Jaccard stability index (default = 100).
+#' @param seed Random seed for reproducibility (default = 123).
+#' @param compute_consensus Logical. If `TRUE`, performs consensus clustering (default = `TRUE`).
+#' @param compute_jaccard Logical. If `TRUE`, computes bootstrap-based Jaccard index for cluster stability (default = `TRUE`).
+#' @param consensus_runs Integer. Number of resamples for consensus clustering (default = 100).
+#' @param plots_suffix Character string added to filenames when saving plots (default = `paste0(distance, "_", clust_method)`).
+#' @param plots_dir Directory where plots are saved (default = current working directory).
 #'
-#' @return A list containing:
-#' \item{silhouette_plot}{A ggplot2 object for the silhouette plot.}
-#' \item{pam_fit}{The best PAM clustering model based on the optimal number of clusters determined by silhouette width.}
+#' @return A list with the following elements:
+#' \describe{
+#'   \item{silhouette_plots}{A list of silhouette plots for each evaluated number of clusters, and a summary plot.}
+#'   \item{fit}{Fitted clustering objects for each k.}
+#'   \item{bootstrap}{Bootstrap cluster stability results for each k (if `compute_jaccard = TRUE`).}
+#'   \item{consensus_clustering}{ConsensusClusterPlus results and ICL scores (if `compute_consensus = TRUE`).}
+#'   \item{best_nclust}{The optimal number of clusters based on average silhouette width.}
+#'   \item{method}{The clustering method used.}
+#' }
+#'
+#' @details
+#' This function streamlines the evaluation of clustering strategies on binary or continuous datasets using silhouette scores,
+#' consensus clustering, and cluster stability (via bootstrapped Jaccard index). Useful for benchmarking clustering algorithms and selecting optimal k.
+#'
+#' @import cluster
+#' @import ggplot2
+#' @importFrom plotly ggplotly
+#' @importFrom dplyr arrange mutate slice_head pull
+#' @importFrom ConsensusClusterPlus ConsensusClusterPlus calcICL
+#' @importFrom stats hclust cutree kmeans
+#' @importFrom utils head
+#'
+#' @export
 #'
 #' @examples
-#' # Example usage with a dissimilarity matrix `diss_matrix`
-#' results <- cluster_eval(x = diss_matrix, ndim = 10)
-#' results$silhouette_plot  # Access the silhouette plot
-#' results$pam_fit  # Access the best PAM clustering model
-#'
-#' @importFrom cluster pam
-#' @importFrom ggplot2 ggplot aes geom_line geom_point labs theme_linedraw ggsave
-#' @importFrom dplyr filter arrange slice_head pull
-#' @export
+#' \dontrun{
+#' data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3, n_continuous = 4, n_binary = 4)
+#' x <- data[, -ncol(data)]  # remove true cluster labels
+#' result <- cluster_eval(x, data_type = "binary", clust_method = "pam", distance = "gower")
+#' result$best_nclust
+#' }
+
 
 cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", data_type = "binary",
                         sillplot_dot_size = 6, save_plot = TRUE, nclust = NA, interactive = FALSE,
                          boot_runs = 100, seed = 123, compute_consensus = TRUE,
-                         compute_jaccard = TRUE, consensus_runs = 100,
+                         compute_jaccard = TRUE, consensus_runs = 100, stand = FALSE,
                          plots_suffix = paste0(distance, "_", clust_method), plots_dir = getwd()){
 
   results <- list()
   results$silhouette_plots <- list()
 
-  # ---- Distance Calculation ----
-  if (distance == "auto") {
-    if (data_type == "binary") {
-      dist_obj <- daisy(x, metric = "gower", stand = FALSE)
-      diss <- TRUE
-      distance <- "binary"
+  # ---- Distance/dissimilarity Calculation ----
+  calculate_distance <- function(data_matrix, method = distance, stand = stand) {
+    distance_results <- list()
+    if (distance == "auto") {
+      if (data_type == "binary") {
+        # if data is binary compute dissimilarities
+        distance_results[["dist_obj"]] <- daisy(x, metric = "gower", stand = stand)
+        distance_results[["diss"]] <- TRUE
+        distance_results[["distance"]] <- "gower"
+      } else {
+        distance_results[["dist_obj"]] <- dist(x, method = "euclidean")
+        distance_results[["diss"]] <- FALSE
+        distance_results[["distance"]] <- "euclidean"
+      }
     } else {
-      dist_obj <- daisy(x, metric = "euclidean", stand = FALSE)
-      diss <- TRUE
-      distance <- "euclidean"
+      if (data_type == "binary" || distance == "gower") {
+        # If distance is not gower or data is binary
+        distance_results[["dist_obj"]] <- daisy(x, metric = distance, stand = stand)
+        distance_results[["diss"]] <- TRUE
+        distance_results[["distance"]] <- distance
+      } else {
+        distance_results[["dist_obj"]] <- dist(x, method = distance)
+        distance_results[["diss"]] <- FALSE
+        distance_results[["distance"]] <- distance
+      }
     }
-  } else {
-    dist_obj <- daisy(x, metric = distance, stand = FALSE)
-    diss <- TRUE
+    return(distance_results)
   }
+
+  distance_results <- calculate_distance(data_matrix = x, method = distance, stand = stand)
+
+  # assign variables
+  dist_obj <- distance_results[["dist_obj"]]
+  diss <- distance_results[["diss"]]
 
   # ---- Clustering Method Wrapper ----
   cluster_fn <- switch(clust_method,
@@ -83,7 +132,7 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
       geom_bar(stat = "identity", width = 0.8) +
       scale_fill_carto_d(name = "cluster", palette = "Safe") +
       labs(x = "Silhouette Width", y = "Observation", fill = "Cluster") +
-      ggtitle(paste("Silhouette plot for k =", i, clust_method)) +
+      ggtitle(sprintf("Silhouette plot for k = %s %s", i, clust_method)) +
       theme_minimal() +
       theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
 
@@ -107,11 +156,11 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
   results$silhouette_plots$avg_silhouette_plot <- sillplot
 
   if (save_plot) {
-    if (!dir.exists(file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))) {
-      dir.create(file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))
+    if (!dir.exists(file.path(plots_dir, "clust_eval_results", "silhouette_results"))) {
+      dir.create(file.path(plots_dir, "clust_eval_results", "silhouette_results"))
     }
 
-    ggsave(plot = sillplot, filename = sprintf("sillplot_n%s_%s.jpeg", ndim, plots_suffix), path = file.path(plots_dir, "clust_eval_results", paste0("silhouette_results_", plots_suffix)))
+    ggsave(plot = sillplot, filename = sprintf("sillplot_n%s_%s.jpeg", ndim, plots_suffix), path = file.path(plots_dir, "clust_eval_results", "silhouette_results"))
   }
 
 
@@ -165,18 +214,59 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
     )
 
 
-    if (!dir.exists(file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)))) {
-        dir.create(file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)))
+    if (!dir.exists(file.path(plots_dir, "clust_eval_results", "consensus_results"))) {
+        dir.create(file.path(plots_dir, "clust_eval_results", "consensus_results"))
       }
 
+
+    #calculate_distance_consensus <- function(x, method, stand, diss){
+    #  if (isTRUE(diss)) { #(method == "gower") {
+    #    return(function(x, metric, stand) {
+    #      daisy(x = x, metric = method, stand = stand)
+    #      }
+    #    )
+    #  } else { #(method %in% c("manhattan", "euclidean", "maximum", "canberra", "binary", "minkowski")) {
+    #    return(function(x) {
+    #      dist(x, method = method)#, method = method)
+    #      }
+    #    )
+    #  } #else {
+        #stop("Unsupported custom distance function for consensus clustering.")
+      #}
+    #}
+
+    calculate_distance_consensus <- function(x){
+      return(function(x){
+        x
+      })
+    }
+
+    # Return function to calculate distance
+    message(sprintf("Calculating consensus clustering of %s data using %s distance and %s algorithm...", data_type, distance_results[["distance"]], clust_method))
+
+
+    #custom_distance_consensus <- calculate_distance_consensus(x = x, method = distance_results[["distance"]], stand = stand, diss =
+    #                                                            distance_results[["diss"]])
+
+    custom_distance_consensus <- calculate_distance_consensus(x = distance_results[["dist_obj"]])
+    # Assign d to dissim matrix if distance == "gower"
+    #if (distance_results[["distance"]] %in% c("gower", "manhattan")) {
+    #if (data_type == "binary") {
+    #  x = distance_results[["dist_obj"]]
+    #} else {
+    #  x = as.matrix(t(x))
+    #}
+
+    # custom_distance_consensus
+
     consensus_res <- ConsensusClusterPlus(
-      d = as.matrix(t(x)), maxK = ndim, reps = consensus_runs,
+      d = distance_results[["dist_obj"]], maxK = ndim, reps = consensus_runs,
       pItem = 0.8, pFeature = 1, clusterAlg = clust_method_consensus_clust,
-      distance = distance, innerLinkage = "average",
-      seed = seed, plot = "pdf", title = file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix))
+      distance = "custom_distance_consensus", innerLinkage = "average",
+      seed = seed, plot = "pdf", title = file.path(plots_dir, "clust_eval_results", "consensus_results", plots_suffix)
     )
 
-    icl <- calcICL(consensus_res, title = file.path(plots_dir, "clust_eval_results", paste0("consensus_results_", plots_suffix)), plot = "pdf")
+    icl <- calcICL(consensus_res, title = file.path(plots_dir, "clust_eval_results", "consensus_results", plots_suffix), plot = "pdf")
 
     results$consensus_clustering <- list(result = consensus_res, consensus_calc = icl)
   }

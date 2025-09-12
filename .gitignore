@@ -2,3 +2,5 @@
 .Rhistory
 .Rbuildignore
 inst/doc
+/doc/
+/Meta/

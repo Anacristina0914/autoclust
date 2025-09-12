@@ -1,29 +1,29 @@
-#' Compute dissimilarity matrices
+#' Compute and Visualize a Dissimilarity Matrix
 #'
-#' Wrapper function (daisy) for computing dissimilarity matrices from matrix or datasets of continuous, discrete, or categorical variables.
-#' The function also creates a heatmap using the dissimilarity matrix if specified.
+#' Computes a dissimilarity matrix using the \code{\link[cluster]{daisy}} function and
+#' optionally visualizes it using a heatmap.
 #'
-#' @param x numeric matrix or data frame (n x p). Dissimilarities are computed between the rows of x. Dataframe must contain headers.
-#' For further details, see help(daisy).
-#' @param metric Metric to be used to compute matrix. Possible options include "gower" (default), "euclidean", or "manhattan".
-#' @param stand if TRUE, measurements in x are standardized before calculating dissimilarities. For further details, see help(daisy).
-#' @param return_dis if TRUE function returns dissimilarity object rather than matrix.
-#' @param plot_dissim if TRUE, plots the dissimilarity matrix as a heatmap and shows hierarchical clustering on the plot.
-#' @param heatmap_title Title for the heatmap plot.
-#' @param heatmap_axis_text_size Heatmap x-y axis text size.
-#' @param plot_title_size Font size for the plot title.
-#' @param save_plots If TRUE plots produced are saved in the working directory.
-#' @param plot_outpath Output pathway for plots. If not specified and save_plots is TRUE they are saved in the current directory.
-#' @return A list containing the dissimilarity matrix, optionally the heatmap plot if specified.
+#' @param x A data matrix or data frame.
+#' @param metric Character. Dissimilarity metric to use: \code{"euclidean"}, \code{"manhattan"}, or \code{"gower"}.
+#' @param stand Logical. Whether to standardize variables (used for non-Gower metrics).
+#' @param return_dis Logical. If \code{TRUE}, returns the dissimilarity object; else returns a matrix.
+#' @param plot_dissim Logical. Whether to generate a dissimilarity heatmap.
+#' @param heatmap_title Character. Title of the heatmap plot.
+#' @param heatmap_axis_text_size Numeric. Axis text size for the heatmap.
+#' @param plot_title_size Numeric. Plot title font size.
+#' @param save_plots Logical. If \code{TRUE}, saves the heatmap.
+#' @param plot_outpath Character. Directory where the plot is saved.
 #'
+#' @return A list containing:
+#' \describe{
+#'   \item{dissimilarity_matrix}{Either a dissimilarity object or a matrix, depending on \code{return_dis}.}
+#'   \item{heatmap_plot}{(Optional) ggplot2 heatmap plot of the dissimilarity matrix.}
+#' }
 #' @importFrom cluster daisy
-#' @examples
-#' # Example of how to use the function
-#' result <- compute_dissimilarity_matrix(x = autoant_dataset, metric = "gower")
-#' result$dissimilarity_matrix  # Access the matrix
-#' result$heatmap_plot  # Access the plot (if plot_dissim = TRUE)
-#'
+#' @importFrom factoextra fviz_dist
+#' @import ggplot2
 #' @export
+
 compute_dissimilarity_matrix <- function(x, metric = c("euclidean", "manhattan", "gower"), stand = FALSE, return_dis = FALSE,
                                          plot_dissim = TRUE, heatmap_title = paste0(metric, " Dissimilarity Matrix"), heatmap_axis_text_size = 4,
                                          plot_title_size = 20, save_plots = FALSE, plot_outpath = ".") {

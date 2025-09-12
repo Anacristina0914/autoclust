@@ -42,7 +42,9 @@ Imports:
     umap,
     viridis,
     purrr,
-    rlang
+    rlang,
+    cluster,
+    ConsensusClusterPlus
 Suggests: 
     rmarkdown
 VignetteBuilder: knitr

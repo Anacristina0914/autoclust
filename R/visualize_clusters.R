@@ -1,3 +1,30 @@
+#' Visualize Clustering Results with t-SNE and UMAP
+#'
+#' Visualizes cluster assignments from a PAM model using t-SNE and UMAP dimensionality
+#' reduction techniques. UMAP is computed for several combinations of \code{n_neighbors}
+#' and \code{min_dist} values. The function returns plots and optionally saves them.
+#'
+#' @param x A dissimilarity matrix (must be of class "dissimilarity").
+#' @param pam_fit A fitted PAM object (e.g., from \code{cluster::pam()}).
+#' @param df Data frame containing metadata including IDs and stability scores.
+#' @param id_col Character. Name of the ID column in \code{df}.
+#' @param umap_nneight Integer vector. Values for the UMAP \code{n_neighbors} parameter.
+#' @param umap_min_dist Numeric vector. Values for the UMAP \code{min_dist} parameter.
+#' @param point_size Numeric. Size of points in the plots. Default is 2.
+#' @param stability_col Character. Column name in \code{df} that stores cluster stability metrics.
+#' @param save_plots Logical. If \code{TRUE}, plots are saved to \code{plot_outpath}.
+#' @param plot_outpath Character. Directory path for saving plots. Default is current directory.
+#'
+#' @return A list with:
+#' \describe{
+#'   \item{tsne_plot}{A ggplot2 object visualizing clusters via t-SNE.}
+#'   \item{umap_plots}{A nested list of ggplot2 UMAP plots indexed by neighbor and distance parameters.}
+#' }
+#' @import ggplot2
+#' @importFrom Rtsne Rtsne
+#' @importFrom randomcoloR distinctColorPalette
+#' @export
+
 visualize_clusters <- function(x, pam_fit, df, id_col, umap_nneight = c(10L, 15L, 20L, 25L, 30L, 35L, 40L, 45L, 50L),
                                umap_min_dist = c(0.1, 0.25, 0.3, 0.5, 0.75, 0.99), point_size = 2, stability_col = "stability",
                                save_plots = FALSE,
