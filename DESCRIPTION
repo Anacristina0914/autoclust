@@ -3,7 +3,7 @@ Title: Clustering using autoantibodies and association to clinical variables.
 Version: 0.1.0
 Authors@R: 
     person("Ana Cristina", "Gonzalez", , "ana.cristina.gonzalez.sanchez@ki.se", role = c("aut", "cre"),
-           comment = c(ORCID = ""))
+           comment = c(ORCID = "0009-0003-8000-6823"))
 Description: Cluster samples and visualize. Carry out association against clinical variables.
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
@@ -16,6 +16,9 @@ Imports:
     cluster,
     dplyr,
     factoextra,
+    fgsea,
+    forcats,
+    fpc,
     GGally,
     ggcorrplot,
     ggplot2,
@@ -28,16 +31,20 @@ Imports:
     lubridate,
     magrittr,
     mediation,
+    methods,
+    msigdbr,
     naniar,
     pheatmap,
     plotly,
     qqman,
     randomcoloR,
+    rcartocolor,
     readxl,
     reshape2,
     rstanarm,
     Rtsne,
     scatterplot3d,
+    stringr,
     survival,
     umap,
     viridis,
