@@ -19,6 +19,7 @@ cluster_eval(
   compute_consensus = TRUE,
   compute_jaccard = TRUE,
   consensus_runs = 100,
+  stand = FALSE,
   plots_suffix = paste0(distance, "_", clust_method),
   plots_dir = getwd()
 )

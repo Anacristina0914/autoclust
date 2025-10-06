@@ -5,7 +5,7 @@
 \title{Custom ggplot2 theme for subgroups SLE}
 \usage{
 theme_clustering(
-  text_family = "Roboto",
+  text_family = "sans",
   text_size = 8,
   text_color = "black",
   plot_title_family = "Lobster Two",
