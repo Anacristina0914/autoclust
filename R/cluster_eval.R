@@ -48,13 +48,13 @@
 #'
 #' @examples
 #' \dontrun{
-#' data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3, n_continuous = 4, n_binary = 4)
+#' data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3,
+#' n_continuous = 4, n_binary = 4)
 #' x <- data[, -ncol(data)]  # remove true cluster labels
 #' result <- cluster_eval(x, data_type = "binary", clust_method = "pam", distance = "gower")
 #' result$best_nclust
 #' }
-
-
+#'
 cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", data_type = "binary",
                         sillplot_dot_size = 6, save_plot = TRUE, nclust = NA, interactive = FALSE,
                          boot_runs = 100, seed = 123, compute_consensus = TRUE,

@@ -62,9 +62,7 @@
 #' @seealso [run_associations()], [ggplot2::ggplot()]
 #' @import ggplot2 dplyr stringr
 #' @export
-
-
-
+#'
 make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_colname, adjust_vars,
                              clinical_manifestation_colname = "clinical_manifestation", ntop = NULL,
                              adjust_p = adjust_p, p_adj_method = p_adj_method,
