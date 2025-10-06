@@ -1,4 +1,8 @@
-make_aa_lineplot <- function(x, aa_colnames, subgroup_column, subgroup_colors=distinctColorPalette(k = length(unique(x %>% pull(subgroup_column)))),
+
+
+
+make_aa_lineplot <- function(x, aa_colnames, subgroup_column,
+                             subgroup_colors=distinctColorPalette(k = length(unique(x %>% pull(subgroup_column)))),
                              line_width = 1.5, geom_point = 2,
                              plot_theme = autoclust::theme_clustering(text_size = 8, plot_title_size = 18), ...){
 
