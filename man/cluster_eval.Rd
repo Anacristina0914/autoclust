@@ -79,9 +79,11 @@ consensus clustering, and cluster stability (via bootstrapped Jaccard index). Us
 }
 \examples{
 \dontrun{
-data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3, n_continuous = 4, n_binary = 4)
+data <- generate_synthetic_mixed_data(n_samples = 300, n_clusters = 3,
+n_continuous = 4, n_binary = 4)
 x <- data[, -ncol(data)]  # remove true cluster labels
 result <- cluster_eval(x, data_type = "binary", clust_method = "pam", distance = "gower")
 result$best_nclust
 }
+
 }
