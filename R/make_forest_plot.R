@@ -1,4 +1,71 @@
-make_forest_plot <- function(results_df, clinical_manifestation, outcome_var_colname, adjust_vars,
+#' Create a Forest Plot of Association Results
+#'
+#' This function generates a publication-ready forest plot summarizing the odds ratios (ORs),
+#' 95% confidence intervals, and p-values (or adjusted p-values) from association analyses,
+#' such as those produced by \code{run_associations()}. It filters, ranks, and visualizes
+#' the most significant associations across clinical manifestations and predictor variables.
+#'
+#' @param results_df A data frame containing association results, including columns for
+#'   \code{OR}, \code{2.5 %}, \code{97.5 %}, p-values (e.g., \code{Pr>|z|}),
+#'   and optionally adjusted p-values (\code{adj_p}).
+#' @param clinical_manifestation Character vector of clinical manifestation names to include in the plot.
+#' @param predictor_var_colname Character string specifying the column name for the predictor variable.
+#' @param adjust_vars Character vector or string of adjustment variables used in the model
+#'   (e.g., \code{"Age_dx + sex"}). Used to remove adjusted terms from the plotted results.
+#' @param clinical_manifestation_colname Character string indicating the column name in
+#'   \code{results_df} corresponding to the clinical manifestation variable (default: \code{"clinical_manifestation"}).
+#' @param ntop Integer specifying the number of top associations (by OR) to include in the plot (default: \code{NULL}, plots all).
+#' @param adjust_p Logical indicating whether adjusted p-values (\code{adj_p}) should be used
+#'   for coloring points (default: inherits from calling environment).
+#' @param p_adj_method Character string specifying the p-value adjustment method (default: inherits from calling environment).
+#' @param pt.size Numeric value controlling point size in the forest plot.
+#' @param y.axis.text.size Numeric value specifying text size for the y-axis labels.
+#' @param x.axis.text.size Numeric value specifying text size for the x-axis labels.
+#' @param or.label.size Numeric value controlling the size of the odds ratio text labels.
+#' @param plot_title Character string specifying the plot title (default: \code{""}).
+#' @param name_mapping Optional named vector or list mapping variable names to human-readable labels.
+#' @param add_xylabs Logical; if \code{TRUE}, adds axis labels and title to the plot (default: \code{FALSE}).
+#' @param filter_sig_OR Logical; if \code{TRUE}, filters results to include only significant ORs
+#'   (i.e., 95\% CI does not cross 1) (default: \code{TRUE}).
+#'
+#' @details
+#' The function removes intercepts and adjustment variables from the results before plotting.
+#' If \code{filter_sig_OR = TRUE}, only terms with 95% confidence intervals entirely above or below 1
+#' are included. Associations are colored by their p-value or adjusted p-value, depending on user settings.
+#' The x-axis represents the odds ratio (OR) with 95% confidence intervals, and the y-axis shows the
+#' clinical manifestation and predictor variable combinations.
+#'
+#' When \code{name_mapping} is provided, both the clinical manifestation and predictor names are
+#' replaced by human-readable labels. This is particularly useful for figure preparation in publications.
+#'
+#' @return A \code{ggplot2} object representing the forest plot, ready for further customization or saving.
+#'
+#' @examples
+#' \dontrun{
+#' forest <- make_forest_plot(
+#'   results_df = association_results,
+#'   clinical_manifestation = c("arthritis", "nephritis"),
+#'   predictor_var_colname = "cluster",
+#'   adjust_vars = "Age_dx + sex",
+#'   ntop = 10,
+#'   adjust_p = TRUE,
+#'   pt.size = 2,
+#'   y.axis.text.size = 10,
+#'   x.axis.text.size = 8,
+#'   or.label.size = 3,
+#'   plot_title = "Top 10 Cluster Associations",
+#'   add_xylabs = TRUE
+#' )
+#' print(forest)
+#' }
+#'
+#' @seealso [run_associations()], [ggplot2::ggplot()]
+#' @import ggplot2 dplyr stringr
+#' @export
+
+
+
+make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_colname, adjust_vars,
                              clinical_manifestation_colname = "clinical_manifestation", ntop = NULL,
                              adjust_p = adjust_p, p_adj_method = p_adj_method,
                              pt.size = pt.size, y.axis.text.size, x.axis.text.size, or.label.size, plot_title = "",
@@ -70,7 +137,7 @@ make_forest_plot <- function(results_df, clinical_manifestation, outcome_var_col
   break_sizes <- (xlim_max - xlim_min) / 10
 
   # Forest plot
-  forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(clinical_manifestation, .data[[outcome_var_colname]], predictor, sep = " - "), OR))) +
+  forest <- ggplot(top_results, aes(x = OR, y = reorder(paste(clinical_manifestation, .data[[predictor_var_colname]], predictor, sep = " - "), OR))) +
     geom_errorbarh(aes(xmin = `2.5 %`, xmax = `97.5 %`), height = 0.2, color = "black") +  # Confidence intervals
     geom_point(aes(color = .data[[pvalue_var_name]], shape = category), size = pt.size, ) +                                   # OR points, colored by category
     scale_color_gradient(
