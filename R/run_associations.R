@@ -62,6 +62,7 @@
 #' }
 #'
 #' @seealso [glm()], [p.adjust()], [make_forest_plot()]
+#' @importFrom stats as.formula binomial coef confint dist glm p.adjust rbinom reorder rnorm setNames
 #' @export
 
 

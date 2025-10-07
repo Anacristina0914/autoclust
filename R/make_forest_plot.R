@@ -5,9 +5,8 @@
 #' such as those produced by \code{run_associations()}. It filters, ranks, and visualizes
 #' the most significant associations across clinical manifestations and predictor variables.
 #'
-#' @param results_df A data frame containing association results, including columns for
-#'   \code{OR}, \code{2.5 %}, \code{97.5 %}, p-values (e.g., \code{Pr>|z|}),
-#'   and optionally adjusted p-values (\code{adj_p}).
+#' @param results_df A data frame containing association results, including columns for \code{OR},
+#' \code{2.5 \%}, \code{97.5 \%}, p-values (e.g., \code{Pr\>|z\|}), and optionally adjusted p-values (\code{adj_p}).
 #' @param clinical_manifestation Character vector of clinical manifestation names to include in the plot.
 #' @param predictor_var_colname Character string specifying the column name for the predictor variable.
 #' @param adjust_vars Character vector or string of adjustment variables used in the model
@@ -26,7 +25,7 @@
 #' @param name_mapping Optional named vector or list mapping variable names to human-readable labels.
 #' @param add_xylabs Logical; if \code{TRUE}, adds axis labels and title to the plot (default: \code{FALSE}).
 #' @param filter_sig_OR Logical; if \code{TRUE}, filters results to include only significant ORs
-#'   (i.e., 95\% CI does not cross 1) (default: \code{TRUE}).
+#' (i.e., 95% CI does not cross 1) (default: \code{TRUE}).
 #'
 #' @details
 #' The function removes intercepts and adjustment variables from the results before plotting.
@@ -61,6 +60,8 @@
 #'
 #' @seealso [run_associations()], [ggplot2::ggplot()]
 #' @import ggplot2 dplyr stringr
+#' @importFrom methods is
+#' @importFrom stats as.formula
 #' @export
 #'
 make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_colname, adjust_vars,

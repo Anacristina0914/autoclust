@@ -1,0 +1,5 @@
+name: R-CMD-check
+on: [push, pull_request]
+jobs:
+    R-CMD-check:
+        uses: r-lib/actions/check-standard@v2

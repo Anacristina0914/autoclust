@@ -24,6 +24,9 @@ make_forest_plot(
 )
 }
 \arguments{
+\item{results_df}{A data frame containing association results, including columns for \code{OR},
+\code{2.5 \%}, \code{97.5 \%}, p-values (e.g., \code{Pr\>|z\|}), and optionally adjusted p-values (\code{adj_p}).}
+
 \item{clinical_manifestation}{Character vector of clinical manifestation names to include in the plot.}
 
 \item{predictor_var_colname}{Character string specifying the column name for the predictor variable.}
@@ -56,7 +59,7 @@ for coloring points (default: inherits from calling environment).}
 \item{add_xylabs}{Logical; if \code{TRUE}, adds axis labels and title to the plot (default: \code{FALSE}).}
 
 \item{filter_sig_OR}{Logical; if \code{TRUE}, filters results to include only significant ORs
-(i.e., 95\\% CI does not cross 1) (default: \code{TRUE}).}
+(i.e., 95\% CI does not cross 1) (default: \code{TRUE}).}
 }
 \value{
 A \code{ggplot2} object representing the forest plot, ready for further customization or saving.
