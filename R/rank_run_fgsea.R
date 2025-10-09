@@ -14,7 +14,7 @@
 #'   Valid options are retrieved via \code{msigdbr::msigdbr_collections()}.
 #' @param msigdb_cached Optional pre-fetched MSigDB data frame (to avoid repeated API calls).
 #'   If supplied, must contain at least columns \code{gs_name}, \code{gene_symbol},
-#'   \code{gs_cat}, \code{gs_subcat}, and \code{gs_description}.
+#'   \code{gs_collection}, \code{gs_subcollection}, and \code{gs_description}.
 #' @param fgsea_maxsize Integer; maximum size of gene sets to include in analysis (default: \code{500}).
 #' @param fgsea_minsize Integer; minimum size of gene sets to include in analysis (default: \code{15}).
 #' @param top_pathways Integer; number of top enriched pathways to display in the summary plot (default: \code{10}).
@@ -96,11 +96,11 @@ rank_run_fsgsea <- function(limma_results_df, msigdb_collection, msigdb_cached =
     msig_collection <- purrr::map_dfr(msigdb_collection, function(collection) {
       msigdbr(species = "Homo sapiens", category = collection)
     }) %>%
-      dplyr::select(gs_name, gene_symbol, gs_cat, gs_subcat, gs_description)
+      dplyr::select(gs_name, gene_symbol, gs_collection, gs_subcollection, gs_description)
   } else {
     msig_collection <- msigdb_cached %>%
-      filter(gs_cat %in% msigdb_collection) %>%
-      dplyr::select(gs_name, gene_symbol, gs_cat, gs_subcat, gs_description)
+      filter(gs_collection %in% msigdb_collection) %>%
+      dplyr::select(gs_name, gene_symbol, gs_collection, gs_subcollection, gs_description)
   }
 
   # Create a list to store the results
@@ -145,7 +145,7 @@ rank_run_fsgsea <- function(limma_results_df, msigdb_collection, msigdb_cached =
 
   # Save description info separately
   gene_set_metadata <- msig_collection %>%
-    distinct(gs_name, gs_cat, gs_subcat, gs_description)
+    distinct(gs_name, gs_collection, gs_subcollection, gs_description)
   result_list[["gene_set_metadata"]] <- gene_set_metadata
 
   # Convert to list format required by fgsea (lists with gs names and all the elements as character).
