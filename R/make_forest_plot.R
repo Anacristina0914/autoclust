@@ -82,8 +82,6 @@ make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_c
     filter(predictor != "(Intercept)") %>%
     filter(!str_detect(predictor, paste(adjust_vars, collapse = "|")))
 
-  print(head(results_df))
-
   if (filter_sig_OR){
     message("Filtering ORs...")
     results_df <- results_df %>%
@@ -97,6 +95,16 @@ make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_c
     }
   }
 
+  
+  if (adjust_p){
+    pvalue_var_name <- "adj_p"
+  } else {
+    pvalue_var_name <- "Pr>|z|"
+  }
+  
+  # Arrange results by pvalue
+  results_df <- results_df %>%
+    arrange(!!sym(pvalue_var_name))
 
   if (!is.null(ntop)){
     # Select top results
@@ -113,11 +121,7 @@ make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_c
       arrange(-OR)
   }
 
-  if (adjust_p){
-    pvalue_var_name <- "adj_p"
-  } else {
-    pvalue_var_name <- "Pr>|z|"
-  }
+
 
   # Categorize results
   #top_results$category <- with(top_results, ifelse(`Pr>|z|` < 0.05, "Pval < 0.05", "Pval > 0.05"))
