@@ -45,8 +45,37 @@
   </div>
 </nav><div class="container template-home">
 <div class="row">
-  <main id="main" class="col-md-9">
-Cluster samples and visualize. Carry out association against clinical variables.
+  <main id="main" class="col-md-9"><div class="section level1">
+<div class="page-header"><h1 id="autoclust-">autoclust <img src="reference/figures/logo.png" align="right" width="120"><a class="anchor" aria-label="anchor" href="#autoclust-"></a>
+</h1></div>
+<p><a href="https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml" class="external-link"><img src="https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml/badge.svg" alt="R-CMD-check"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a> <a href="https://github.com/Anacristina0914/autoclust/releases" class="external-link"><img src="https://img.shields.io/github/v/release/Anacristina0914/autoclust" alt="GitHub release"></a></p>
+<blockquote>
+<p>Automated clustering and association testing for patient stratification using antibody, proteomic, and clinical data.</p>
+</blockquote>
+<hr>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p><code>autoclust</code> is an R package designed for <strong>unsupervised clustering</strong> and <strong>association testing</strong> in heterogeneous biomedical datasets.<br>
+It supports:<br>
+- Clustering with Gower distance, PAM, and other algorithms<br>
+- Cluster evaluation via silhouette, bootstrap stability, and consensus metrics<br>
+- Association testing with clinical variables using frequentist or Bayesian logistic regression<br>
+- Visualization tools for cluster separation, stability, and clinical effect sizes</p>
+<p>Originally developed for patient stratification in <strong>Systemic Lupus Erythematosus (SLE)</strong> cohorts, <code>autoclust</code> is applicable to any multi-feature biomedical dataset with mixed data types.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
+<p>You can install the latest development version directly from GitHub:</p>
+<pre><code><span><span class="co"># Install devtools if you haven't already</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Install autoclust</span></span>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"Anacristina0914/autoclust"</span><span class="op">)</span></span></code></pre>
+</div>
+</div>
   </main><aside class="col-md-3"><div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
