@@ -1,6 +1,8 @@
 .Rproj.user
 .Rhistory
 .Rbuildignore
+autoclust.Rproj
 inst/doc
 /doc/
 /Meta/
+docs
