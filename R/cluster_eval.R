@@ -105,7 +105,7 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
                        kmeans = function(x, k) kmeans(dist_obj, centers = k),
                        clara = function(x, k) clara(dist_obj, k = k),
                        hclust = function(x, k) cutree(hclust(dist_obj, method = "average"), k = k),
-                       stop("Unsupported clustering method") #TODO add other supported cluster methods (density based and )
+                       stop("Unsupported clustering method") #TODO add other supported cluster methods (density based)
   )
 
 
@@ -157,7 +157,7 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
 
   if (save_plot) {
     if (!dir.exists(file.path(plots_dir, "clust_eval_results", "silhouette_results"))) {
-      dir.create(file.path(plots_dir, "clust_eval_results", "silhouette_results"))
+      dir.create(file.path(plots_dir, "clust_eval_results", "silhouette_results"), recursive = T)
     }
 
     ggsave(plot = sillplot, filename = sprintf("sillplot_n%s_%s.jpeg", ndim, plots_suffix), path = file.path(plots_dir, "clust_eval_results", "silhouette_results"))
@@ -215,25 +215,9 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
 
 
     if (!dir.exists(file.path(plots_dir, "clust_eval_results", "consensus_results"))) {
-        dir.create(file.path(plots_dir, "clust_eval_results", "consensus_results"))
+        dir.create(file.path(plots_dir, "clust_eval_results", "consensus_results"), recursive = T)
       }
 
-
-    #calculate_distance_consensus <- function(x, method, stand, diss){
-    #  if (isTRUE(diss)) { #(method == "gower") {
-    #    return(function(x, metric, stand) {
-    #      daisy(x = x, metric = method, stand = stand)
-    #      }
-    #    )
-    #  } else { #(method %in% c("manhattan", "euclidean", "maximum", "canberra", "binary", "minkowski")) {
-    #    return(function(x) {
-    #      dist(x, method = method)#, method = method)
-    #      }
-    #    )
-    #  } #else {
-        #stop("Unsupported custom distance function for consensus clustering.")
-      #}
-    #}
 
     calculate_distance_consensus <- function(x){
       return(function(x){
@@ -244,20 +228,7 @@ cluster_eval <- function(x, ndim = 10, clust_method = "pam", distance = "auto", 
     # Return function to calculate distance
     message(sprintf("Calculating consensus clustering of %s data using %s distance and %s algorithm...", data_type, distance_results[["distance"]], clust_method))
 
-
-    #custom_distance_consensus <- calculate_distance_consensus(x = x, method = distance_results[["distance"]], stand = stand, diss =
-    #                                                            distance_results[["diss"]])
-
     custom_distance_consensus <- calculate_distance_consensus(x = distance_results[["dist_obj"]])
-    # Assign d to dissim matrix if distance == "gower"
-    #if (distance_results[["distance"]] %in% c("gower", "manhattan")) {
-    #if (data_type == "binary") {
-    #  x = distance_results[["dist_obj"]]
-    #} else {
-    #  x = as.matrix(t(x))
-    #}
-
-    # custom_distance_consensus
 
     consensus_res <- ConsensusClusterPlus(
       d = distance_results[["dist_obj"]], maxK = ndim, reps = consensus_runs,
