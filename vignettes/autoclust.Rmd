@@ -26,7 +26,7 @@ Load required packages.
 ```{r setup}
 library(autoclust)
 library(cowplot)
-library(tidyverse)
+library(dplyr)
 library(reshape2)
 ```
 ## Read data
