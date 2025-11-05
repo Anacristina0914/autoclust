@@ -1,6 +1,16 @@
-
-
-
+#' Make line plot for autoantibody frequencies per subgroup
+#'
+#' @param x Data frame with autoantibody and subgroup columns.
+#' @param aa_colnames Character vector of antibody columns.
+#' @param subgroup_column Name of the column defining subgroups.
+#' @param subgroup_colors Optional custom colors.
+#' @param line_width Line thickness.
+#' @param geom_point Point size.
+#' @param plot_theme Plot theme (default: autoclust theme).
+#' @param ... Additional arguments passed to ggplot2::labs.
+#'
+#' @return A ggplot2 object showing antibody frequencies.
+#' @export
 make_aa_lineplot <- function(x, aa_colnames, subgroup_column,
                              subgroup_colors=distinctColorPalette(k = length(unique(x %>% pull(subgroup_column)))),
                              line_width = 1.5, geom_point = 2,
