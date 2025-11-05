@@ -162,12 +162,12 @@ make_forest_plot <- function(results_df, clinical_manifestation, predictor_var_c
     ) +
 
     # Add a vertical line at OR = 1 for reference
-    geom_vline(xintercept = 1, color = "gray40", linetype = "dashed", size = 0.8) +
+    geom_vline(xintercept = 1, color = "gray40", linetype = "dashed", linewidth = 0.8) +
 
     # Add minimal theme with border and grid lines
     theme_classic() +
     theme(
-      panel.border = element_rect(color = "black", fill = NA, size = 0.5),  # Border around plot
+      panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Border around plot
       panel.grid.major.y = element_blank(),                                     # Remove horizontal grid lines
       legend.position = "right",
       legend.text = element_text(size = y.axis.text.size - 2),
