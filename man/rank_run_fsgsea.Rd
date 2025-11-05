@@ -28,7 +28,7 @@ Valid options are retrieved via \code{msigdbr::msigdbr_collections()}.}
 
 \item{msigdb_cached}{Optional pre-fetched MSigDB data frame (to avoid repeated API calls).
 If supplied, must contain at least columns \code{gs_name}, \code{gene_symbol},
-\code{gs_cat}, \code{gs_subcat}, and \code{gs_description}.}
+\code{gs_collection}, \code{gs_subcollection}, and \code{gs_description}.}
 
 \item{fgsea_maxsize}{Integer; maximum size of gene sets to include in analysis (default: \code{500}).}
 
