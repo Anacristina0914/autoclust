@@ -84,19 +84,19 @@ data is located in your computer.</p>
 <span><span class="co"># Explore dataset</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">clinical_data_df</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##         antibody1 antibody2 antibody3 antibody4 antibody5 antibody6 antibody7</span></span>
-<span><span class="co">## sample1         0         0         1         0         1         1         1</span></span>
-<span><span class="co">## sample2         0         0         0         0         1         1         1</span></span>
-<span><span class="co">## sample3         1         0         1         0         1         1         1</span></span>
-<span><span class="co">## sample4         0         0         1         0         1         0         1</span></span>
-<span><span class="co">## sample5         0         0         1         0         1         1         1</span></span>
-<span><span class="co">## sample6         1         1         1         0         0         0         0</span></span>
+<span><span class="co">## sample1         1         0         1         1         0         1         1</span></span>
+<span><span class="co">## sample2         1         0         1         1         0         1         1</span></span>
+<span><span class="co">## sample3         1         0         1         1         0         1         1</span></span>
+<span><span class="co">## sample4         1         0         1         1         0         1         1</span></span>
+<span><span class="co">## sample5         1         0         1         1         0         1         1</span></span>
+<span><span class="co">## sample6         1         0         1         1         0         1         0</span></span>
 <span><span class="co">##         antibody8 antibody9 antibody10 antibody11 antibody12</span></span>
-<span><span class="co">## sample1         0         1          0          1          1</span></span>
-<span><span class="co">## sample2         0         1          0          1          1</span></span>
-<span><span class="co">## sample3         0         1          0          1          1</span></span>
-<span><span class="co">## sample4         0         1          0          1          1</span></span>
-<span><span class="co">## sample5         0         1          0          1          1</span></span>
-<span><span class="co">## sample6         0         1          0          1          1</span></span></code></pre>
+<span><span class="co">## sample1         0         0          1          1          1</span></span>
+<span><span class="co">## sample2         0         1          1          1          1</span></span>
+<span><span class="co">## sample3         0         1          1          1          1</span></span>
+<span><span class="co">## sample4         0         1          1          1          1</span></span>
+<span><span class="co">## sample5         0         1          1          1          1</span></span>
+<span><span class="co">## sample6         0         1          1          1          1</span></span></code></pre>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Establish a directory where to save your results</span></span>
 <span><span class="va">output_data_dir</span> <span class="op">&lt;-</span> <span class="st">"."</span> <span class="co"># This will save the results in the current working directory. You can change it for whatever you want.</span></span></code></pre></div>
@@ -107,96 +107,14 @@ data is located in your computer.</p>
 <p>One can see all the possible parameters of the function
 running:<br>
 /home/runner/work/_temp/Library/autoclust/help/cluster_eval</p>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
-<pre><code><span><span class="co">## boot 1 </span></span>
-<span><span class="co">## boot 2 </span></span>
-<span><span class="co">## boot 3 </span></span>
-<span><span class="co">## boot 4 </span></span>
-<span><span class="co">## boot 5 </span></span>
-<span><span class="co">## boot 6 </span></span>
-<span><span class="co">## boot 7 </span></span>
-<span><span class="co">## boot 8 </span></span>
-<span><span class="co">## boot 9 </span></span>
-<span><span class="co">## boot 10</span></span></code></pre>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Run cluster evaluation</span></span>
+<span><span class="va">n_boots</span> <span class="op">&lt;-</span> <span class="fl">10</span> <span class="co"># How many iterations?</span></span>
+<span><span class="va">n_dim</span> <span class="op">&lt;-</span> <span class="fl">10</span> <span class="co"># Until how many clusters to calculate</span></span>
+<span><span class="va">cluster_evaluation_autoantibodies</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cluster_eval.html">cluster_eval</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">clinical_data_df</span>, ndim <span class="op">=</span> <span class="va">n_dim</span>, distance <span class="op">=</span> <span class="st">"gower"</span>,</span>
+<span>                                                            clust_method <span class="op">=</span> <span class="st">"pam"</span>, save_plot <span class="op">=</span> <span class="cn">TRUE</span>, data_type <span class="op">=</span> <span class="st">"continous"</span>, </span>
+<span>                                                            boot_runs <span class="op">=</span> <span class="va">n_boots</span>, plots_suffix <span class="op">=</span> <span class="st">"clust_positv_pam_gower"</span>,</span>
+<span>                                                            plots_dir <span class="op">=</span> <span class="va">output_data_dir</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="explore-results">Explore results<a class="anchor" aria-label="anchor" href="#explore-results"></a>
@@ -213,7 +131,7 @@ within the same cluster) and the nearest-cluster distance (i.e. how far
 the data point is from points in the nearest neighboring cluster) are
 calculated. The individual silhouette scores are represented on the
 first 10 plots, while the average is represented on the last plot.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Show silhouette plots</span></span>
 <span><span class="fu">cowplot</span><span class="fu">::</span><span class="fu"><a href="https://wilkelab.org/cowplot/reference/plot_grid.html" class="external-link">plot_grid</a></span><span class="op">(</span>plotlist <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">cluster_evaluation_autoantibodies</span><span class="op">$</span><span class="va">silhouette_plots</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/show_clust_eval_results_silhouette-1.png" width="1650"></p>
@@ -224,7 +142,7 @@ first 10 plots, while the average is represented on the last plot.</p>
 <p>Bootstrap stability represented by mean jaccard index, i.e. how
 similar are clusters within themselves when several iterations are
 carried out. The Mean jaccard score by cluster is displayed.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Show jaccard index plots</span></span>
 <span><span class="fu">cowplot</span><span class="fu">::</span><span class="fu"><a href="https://wilkelab.org/cowplot/reference/plot_grid.html" class="external-link">plot_grid</a></span><span class="op">(</span>plotlist <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">cluster_evaluation_autoantibodies</span><span class="op">$</span><span class="va">bootstrap</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">plot</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/show_clust_eval_results_jaccard-1.png" width="2700"></p>
@@ -237,7 +155,7 @@ clustering using the specified distance matrix and clustering algorithm,
 and the consensus class, which uses the boostrap information to assign
 patients to the cluster they are most likely to belong to based on
 <code>n_boots</code> number of iterations.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Add group information to your clinical df</span></span>
 <span><span class="va">clinical_data_wcluster_df</span> <span class="op">&lt;-</span> <span class="va">clinical_data_df</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>gower_pam_positiv_2k <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">as.factor</a></span><span class="op">(</span><span class="va">cluster_evaluation_autoantibodies</span><span class="op">$</span><span class="va">fit</span><span class="op">$</span><span class="va">`2`</span><span class="op">$</span><span class="va">clustering</span><span class="op">)</span>,</span>
@@ -250,15 +168,15 @@ patients to the cluster they are most likely to belong to based on
 <span><span class="fu"><a href="../reference/make_aa_lineplot.html">make_aa_lineplot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">clinical_data_wcluster_df</span>, aa_colnames <span class="op">=</span> <span class="va">aa_colnames</span>, </span>
 <span>  subgroup_column <span class="op">=</span> <span class="st">"gower_pam_positiv_2k"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/make_lineplot-1.png" width="900"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/make_aa_lineplot.html">make_aa_lineplot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">clinical_data_wcluster_df</span>, aa_colnames <span class="op">=</span> <span class="va">aa_colnames</span>, </span>
 <span>  subgroup_column <span class="op">=</span> <span class="st">"gower_pam_positiv_3k"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/make_lineplot-2.png" width="900"></p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/make_aa_lineplot.html">make_aa_lineplot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">clinical_data_wcluster_df</span>, aa_colnames <span class="op">=</span> <span class="va">aa_colnames</span>, </span>
 <span>  subgroup_column <span class="op">=</span> <span class="st">"gower_pam_positiv_2k_consensus"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/make_lineplot-3.png" width="900"></p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/make_aa_lineplot.html">make_aa_lineplot</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">clinical_data_wcluster_df</span>, aa_colnames <span class="op">=</span> <span class="va">aa_colnames</span>, </span>
 <span>  subgroup_column <span class="op">=</span> <span class="st">"gower_pam_positiv_3k_consensus"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/make_lineplot-4.png" width="900"></p>
@@ -271,6 +189,25 @@ patients to the cluster they are most likely to belong to based on
 hypothetical binary variables, but if you have a clinical dataset with
 this information, you will replace this section with the name of your
 columns.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># DO NOT DO THIS - make hypothetical clinical manifestations and sex</span></span>
+<span><span class="va">clinical_manifestations</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_synthetic_clusters.html">generate_synthetic_clusters</a></span><span class="op">(</span>n_samples <span class="op">=</span> <span class="fl">100</span>, n_vars <span class="op">=</span> <span class="fl">4</span>, n_clusters <span class="op">=</span> <span class="fl">3</span>, n_batches <span class="op">=</span> <span class="fl">1</span>, data_type <span class="op">=</span> <span class="st">"binary"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">var1</span>, <span class="va">var2</span>, <span class="va">var3</span>, <span class="va">var4</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">clinical_manifestations</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Arthritis"</span>, <span class="st">"MI"</span>, <span class="st">"IBD"</span>, <span class="st">"sex"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">clinical_data_wcluster_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">clinical_data_wcluster_df</span>, <span class="va">clinical_manifestations</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Define clinical manifestations to test for association</span></span>
+<span><span class="va">clinical_manifestations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Arthritis"</span>, <span class="st">"MI"</span>, <span class="st">"IBD"</span><span class="op">)</span> <span class="co"># replace with your manifestations names</span></span>
+<span></span>
+<span><span class="va">associations_positiv_2k_clust</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_associations.html">run_associations</a></span><span class="op">(</span>clinical_data_df <span class="op">=</span> <span class="va">clinical_data_wcluster_df</span>, </span>
+<span>  clinical_data_cols <span class="op">=</span> <span class="va">clinical_manifestations</span>, </span>
+<span>  predictor_var_colname <span class="op">=</span> <span class="st">"gower_pam_positiv_2k"</span>, </span>
+<span>  adjust_by <span class="op">=</span> <span class="st">"sex"</span>, filter_sig_OR <span class="op">=</span> <span class="cn">FALSE</span>, <span class="co"># Set to true if you want to keep only significant results in the forest plot</span></span>
+<span>  plot <span class="op">=</span> <span class="cn">TRUE</span>, ntop <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="forest-plots">Forest plots<a class="anchor" aria-label="anchor" href="#forest-plots"></a>
+</h3>
 <p>Show forest plots for top associations. By calling
 <code>names(associations_positiv_2k_clust)</code> you can see what the
 output of the analysis contains:</p>
@@ -281,25 +218,23 @@ output of the analysis contains:</p>
 <li>df</li>
 <li>forest_plot</li>
 </ul>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">associations_positiv_2k_clust</span><span class="op">)</span> <span class="co"># Here you can see the information this variable contains.</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "models"             "anova"              "summarized_results"</span></span>
 <span><span class="co">## [4] "df"                 "forest_plot"</span></span></code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#associations_positiv_2k_clust$anova # ANOVA results</span></span>
 <span><span class="va">associations_positiv_2k_clust</span><span class="op">$</span><span class="va">forest_plot</span> <span class="co"># forest plots</span></span></code></pre></div>
 <p><img src="autoclust_files/figure-html/forest_plots-1.png" width="1200"></p>
-</div>
-<div class="section level2">
-<h2 id="conclusions">Conclusions<a class="anchor" aria-label="anchor" href="#conclusions"></a>
-</h2>
-<p>The results of the plots show “clinical manifestation - cluster -
+<p>** How to interpret these?**<br>
+The results of the plots show “clinical manifestation - cluster -
 clustering_variable”, where clinical manifestation corresponds to the
 outcome variable, cluster corresponds to cluster membership in a
 one-v.s.-all other manner. Here the clinical manifestation corresponds
 to the dependent variable (variable to be modelled), and the cluster
 membership corresponds to the independent (predictor) variable. For each
 clinical manifestation in this case we have a model in this form:<br><code>clinical manifestation ~ gower_pam_positiv_2k + sex</code></p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
