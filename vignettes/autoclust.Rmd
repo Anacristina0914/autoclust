@@ -53,7 +53,7 @@ output_data_dir <- "." # This will save the results in the current working direc
 One can see all the possible parameters of the function running:   
 `r help(cluster_eval)`
 
-```{r run_clustering, message=FALSE, echo=FALSE}
+```{r run_clustering, message=FALSE, results='hide'}
 # Run cluster evaluation
 n_boots <- 10 # How many iterations?
 n_dim <- 10 # Until how many clusters to calculate
@@ -107,7 +107,7 @@ make_aa_lineplot(x = clinical_data_wcluster_df, aa_colnames = aa_colnames,
 
 ## Clinical associations  
 For this part, we will also make 3 more synthetic columns with hypothetical binary variables, but if you have a clinical dataset with this information, you will replace this section with the name of your columns.
-```{r run_clinical_associations, echo=FALSE}
+```{r run_clinical_associations, results='hide'}
 # DO NOT DO THIS - make hypothetical clinical manifestations and sex
 clinical_manifestations <- generate_synthetic_clusters(n_samples = 100, n_vars = 4, n_clusters = 3, n_batches = 1, data_type = "binary") %>% select(var1, var2, var3, var4)
 
@@ -125,6 +125,7 @@ associations_positiv_2k_clust <- run_associations(clinical_data_df = clinical_da
   plot = TRUE, ntop = 10)
 ```
 
+### Forest plots
 Show forest plots for top associations. By calling `names(associations_positiv_2k_clust)` you can see what the output of the analysis contains:
 
 - models
@@ -139,6 +140,6 @@ names(associations_positiv_2k_clust) # Here you can see the information this var
 associations_positiv_2k_clust$forest_plot # forest plots
 ```
 
-## Conclusions
+** How to interpret these?**  
 The results of the plots show "clinical manifestation - cluster - clustering_variable", where clinical manifestation corresponds to the outcome variable, cluster corresponds to cluster membership in a one-v.s.-all other manner. Here the clinical manifestation corresponds to the dependent variable (variable to be modelled), and the cluster membership corresponds to the independent (predictor) variable. For each clinical manifestation in this case we have a model in this form:   
 `clinical manifestation ~ gower_pam_positiv_2k + sex`
