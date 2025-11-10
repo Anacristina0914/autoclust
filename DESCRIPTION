@@ -1,12 +1,14 @@
 Package: autoclust
 Title: Clustering using autoantibodies and association to clinical variables.
-Version: 1.0.0
+Version: 1.1.0
 Authors@R: 
     person("Ana Cristina", "Gonzalez", , "ana.cristina.gonzalez.sanchez@ki.se", role = c("aut", "cre"),
            comment = c(ORCID = "0009-0003-8000-6823"))
 Description: Cluster samples and visualize. Carry out association against clinical variables.
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+URL: https://github.com/Anacristina0914/autoclust
+BugReports: https://github.com/Anacristina0914/autoclust/issues
+DOI: 10.5281/zenodo.17569438
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
