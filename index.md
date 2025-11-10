@@ -1,10 +1,10 @@
 # autoclust ![](reference/figures/logo.png)
 
-[![R-CMD-check](https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml/badge.svg)](https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml)
 [![License:
 MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub
-release](https://img.shields.io/github/v/release/Anacristina0914/autoclust)](https://github.com/Anacristina0914/autoclust/releases)
+release](https://img.shields.io/github/v/release/Anacristina0914/autoclust)](https://github.com/Anacristina0914/autoclust/releases)  
+[![DOI](https://zenodo.org/badge/887137273.svg)](https://doi.org/10.5281/zenodo.17569306)
 
 > Automated clustering and association testing for patient
 > stratification using antibody, proteomic, and clinical data.
