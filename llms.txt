@@ -1,10 +1,10 @@
-# autoclust ![](reference/figures/logo.png)
+# autoclust
 
-[![R-CMD-check](https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml/badge.svg)](https://github.com/Anacristina0914/autoclust/actions/workflows/R-CMD-check.yml)
 [![License:
 MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub
-release](https://img.shields.io/github/v/release/Anacristina0914/autoclust)](https://github.com/Anacristina0914/autoclust/releases)
+release](https://img.shields.io/github/v/release/Anacristina0914/autoclust)](https://github.com/Anacristina0914/autoclust/releases)  
+[![DOI](https://zenodo.org/badge/887137273.svg)](https://doi.org/10.5281/zenodo.17569306)
 
 > Automated clustering and association testing for patient
 > stratification using antibody, proteomic, and clinical data.
@@ -39,6 +39,18 @@ You can install the latest development version directly from GitHub:
 
     # Install autoclust
     devtools::install_github("Anacristina0914/autoclust")
+
+If you use **autoclust** in your work, please cite:
+
+> Gonzalez-Sanchez., Ana. C. (2025). *Anacristina0914/autoclust: Initial
+> public release with complete documentation (v1.1.0).* Zenodo.  
+> <https://doi.org/10.5281/zenodo.17569438>
+
+You can also retrieve this information in R by running:
+
+``` r
+citation("autoclust")
+```
 
 # Package index
 

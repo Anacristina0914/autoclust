@@ -7,12 +7,20 @@
 
 ## Citation
 
-Gonzalez A (2025). *autoclust: Clustering using autoantibodies and
-association to clinical variables.*. R package version 1.0.0.
+Source:
+[`inst/CITATION`](https://github.com/Anacristina0914/autoclust/blob/main/inst/CITATION)
+
+Gonzalez-Sanchez A (2025). *autoclust: Comprehensive evaluation of
+cluster robustness and clinical association analysis for autoantibody
+profiles*.
+[doi:10.5281/zenodo.1234567](https://doi.org/10.5281/zenodo.1234567), R
+package version 1.1.0, <https://github.com/Anacristina0914/autoclust>.
 
     @Manual{,
-      title = {autoclust: Clustering using autoantibodies and association to clinical variables.},
-      author = {Ana Cristina Gonzalez},
+      title = {autoclust: Comprehensive evaluation of cluster robustness and clinical association analysis for autoantibody profiles},
+      author = {Ana Cristina Gonzalez-Sanchez},
       year = {2025},
-      note = {R package version 1.0.0},
+      note = {R package version 1.1.0},
+      doi = {10.5281/zenodo.1234567},
+      url = {https://github.com/Anacristina0914/autoclust},
     }

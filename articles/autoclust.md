@@ -32,19 +32,19 @@ head(clinical_data_df)
 ```
 
     ##         antibody1 antibody2 antibody3 antibody4 antibody5 antibody6 antibody7
-    ## sample1         1         0         1         0         1         1         1
-    ## sample2         1         0         1         0         1         1         1
-    ## sample3         1         0         1         0         1         1         1
-    ## sample4         1         0         1         0         0         1         1
-    ## sample5         1         0         1         0         1         1         1
-    ## sample6         1         0         1         0         1         1         1
+    ## sample1         1         0         0         1         1         0         1
+    ## sample2         1         0         1         1         1         0         0
+    ## sample3         1         0         1         1         1         0         0
+    ## sample4         1         0         1         1         1         1         1
+    ## sample5         1         0         0         1         1         0         1
+    ## sample6         1         1         1         1         1         0         1
     ##         antibody8 antibody9 antibody10 antibody11 antibody12
-    ## sample1         0         1          0          1          1
-    ## sample2         0         1          0          1          1
-    ## sample3         0         1          0          1          1
-    ## sample4         0         1          0          1          1
-    ## sample5         0         1          0          1          1
-    ## sample6         0         1          0          1          1
+    ## sample1         1         1          0          1          1
+    ## sample2         1         1          0          1          1
+    ## sample3         1         1          0          1          1
+    ## sample4         1         1          0          1          1
+    ## sample5         1         1          1          1          1
+    ## sample6         1         1          0          1          1
 
 ``` r
 # Establish a directory where to save your results
