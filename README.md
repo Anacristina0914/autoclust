@@ -34,3 +34,16 @@ install.packages("devtools")
 # Install autoclust
 devtools::install_github("Anacristina0914/autoclust")
 ```
+
+If you use **autoclust** in your work, please cite:
+
+> Gonzalez-Sanchez., Ana. C. (2025). *Anacristina0914/autoclust: Initial public release with complete documentation (v1.1.0).* Zenodo.  
+> [https://doi.org/10.5281/zenodo.17569438](https://doi.org/10.5281/zenodo.17569438)
+
+You can also retrieve this information in R by running:
+
+```r
+citation("autoclust")
+```
+
+
