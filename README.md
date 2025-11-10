@@ -1,4 +1,4 @@
-# autoclust <img src="man/figures/logo.png" align="right" width="120"/>
+# autoclust 
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/Anacristina0914/autoclust)](https://github.com/Anacristina0914/autoclust/releases)  
